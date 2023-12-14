@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "401963892153",
+    "project_id": "appointments-5b541",
+    "storage_bucket": "appointments-5b541.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:401963892153:android:118d73779cf67e78978a68",
+        "android_client_info": {
+          "package_name": "com.orhava.appointments"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "401963892153-8inv89kmob5fp3h89vie9rkdbb9gen87.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.orhava.appointments",
+            "certificate_hash": "7535bf265e18c1fa6190256e1f8f5f0c33834605"
+          }
+        },
+        {
+          "client_id": "401963892153-rfkmrm58uv6mi48qme7r99d4bqgmanl7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEcAr849yPM2wxG4kwEE2f-MiMm53w--4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "401963892153-rfkmrm58uv6mi48qme7r99d4bqgmanl7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
