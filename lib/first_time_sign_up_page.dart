@@ -9,6 +9,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'helpers.dart';
 import 'home_page_business.dart';
 import 'dart:async';
 import 'main.dart';
@@ -27,7 +28,13 @@ class UserProfile {
   final String ownerName;
   final String businessLocation;
   final String businessType;
+  double businessRating;
+  List<String> ratedUserIds;
+  Map<String, double> ratings; // New field to store ratings for each user
+  List<String> blockedUserIds;
+  List<Service> services;
   final int slotDurationInMinutes;
+  final int slotAllowedAmount;
   late final String? photoUrl;
   final Map<String, Map<String, dynamic>> businessSchedule;
   final Map<String, List<Appointment>>? appointmentsByDate;
@@ -41,6 +48,7 @@ class UserProfile {
     required this.businessInfo,
     required this.businessLocation,
     required this.businessType,
+    required this.slotAllowedAmount,
     required this.businessFullAddress,
     required this.businessAppointmentPolicies,
     required this.businessServicesOffered,
@@ -48,6 +56,11 @@ class UserProfile {
     required this.ownerName,
     required this.businessSchedule,
     required this.slotDurationInMinutes,
+    required this.businessRating,
+    required this.ratedUserIds,
+    required this.ratings,
+    required this.blockedUserIds,
+    required this.services,
     this.appointmentsByDate,
     this.photoUrl,
   });
@@ -67,10 +80,16 @@ class UserProfile {
       'businessServicesOffered': businessServicesOffered,
       'businessPhotos': businessPhotos,
       'slotDurationInMinutes': slotDurationInMinutes,
+      'businessRating': businessRating,
+      'ratedUserIds': ratedUserIds,
+      'ratings': ratings,
+      'slotAllowedAmount': slotAllowedAmount,
+      'blockedUserIds': blockedUserIds,
       'ownerName': ownerName,
       'photoUrl': photoUrl,
       'businessSchedule': _convertBusinessScheduleToJson(),
       'appointmentsByDate': appointmentsByDate,
+      'services': services.map((service) => service.toJson()).toList(),
     };
   }
 
@@ -82,13 +101,21 @@ class UserProfile {
       phoneNumber: json['phoneNumber'] ?? "",
       businessName: json['businessName'] ?? "",
       businessInfo: json['businessInfo'] ?? "",
+      slotAllowedAmount: json['slotAllowedAmount'] ?? 1,
       businessLocation: json['businessLocation'] ?? "",
       slotDurationInMinutes: json['slotDurationInMinutes'] ?? 30,
       businessFullAddress: json['businessFullAddress'] ?? "",
+      businessRating: (json['businessRating'] ?? 0).toDouble(),
+      ratedUserIds: List<String>.from(json['ratedUserIds'] ?? []),
+      ratings: Map<String, double>.from(json['ratings']
+              ?.map((key, value) => MapEntry(key, (value ?? 0).toDouble())) ??
+          {}),
+
       businessAppointmentPolicies: json['businessAppointmentPolicies'] ?? "",
       businessServicesOffered:
           List<String>.from(json['businessServicesOffered'] ?? []), // new
       businessPhotos: List<String>.from(json['businessPhotos'] ?? []), // new
+      blockedUserIds: List<String>.from(json['blockedUserIds'] ?? []),
 
       businessType: json['businessType'] ?? "",
       ownerName: json['ownerName'] ?? "",
@@ -97,6 +124,11 @@ class UserProfile {
           _convertJsonToAppointments(json['appointmentsByDate']),
       businessSchedule:
           _convertJsonToBusinessSchedule(json['businessSchedule'] ?? {}),
+      services: (json['services'] as List<dynamic>?)?.map((serviceJson) {
+            return Service(serviceJson['name'],
+                serviceJson['amount'].toDouble(), serviceJson['paymentType']);
+          }).toList() ??
+          [], // Populate services from JSON
     );
   }
 
@@ -170,50 +202,6 @@ class UserProfile {
   }
 }
 
-class Appointment {
-  final String userId;
-  final String name;
-  final String phone;
-  final bool cancelled;
-  final DateTime startTime;
-  final DateTime endTime;
-  String? pushId;
-
-  Appointment({
-    required this.userId,
-    required this.name,
-    required this.phone,
-    required this.cancelled,
-    required this.startTime,
-    required this.endTime,
-    this.pushId,
-  });
-
-  factory Appointment.fromJson(Map<String, dynamic> json) {
-    return Appointment(
-      userId: json['userId'],
-      name: json['name'],
-      phone: json['phone'],
-      cancelled: json['cancelled'],
-      pushId: json['pushId'],
-      startTime: DateTime.parse(json['startTime']),
-      endTime: DateTime.parse(json['endTime']),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'userId': userId,
-      'name': name,
-      'phone': phone,
-      'cancelled': cancelled,
-      'startTime': startTime.toIso8601String(),
-      'endTime': endTime.toIso8601String(),
-      'pushId': pushId,
-    };
-  }
-}
-
 class FirstTimeSignUpPage extends StatefulWidget {
   const FirstTimeSignUpPage({Key? key}) : super(key: key);
 
@@ -231,10 +219,17 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
       TextEditingController();
   final TextEditingController businessAppointmentPoliciesController =
       TextEditingController();
-  final TextEditingController businessServicesOfferedController =
+  final TextEditingController businessAppointmentAmountAllowed =
       TextEditingController();
+
   final TextEditingController businessPhotosController =
       TextEditingController();
+
+  List<Service> services = [];
+
+  TextEditingController serviceNameController = TextEditingController();
+  TextEditingController serviceAmountController = TextEditingController();
+  String selectedPaymentType = 'Shekels'; // Default payment type
 
   final StreamController<double> _progressController =
       StreamController<double>();
@@ -262,7 +257,7 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
   String? selectedBusinessType = 'Salon';
   String? selectedBusinessLocation = 'Tel Aviv';
   int? selectedslotDurationInMinutes = 30;
-
+  int? selectedslotAllowed = 1;
   LinkedHashMap<String, Map<String, dynamic>> businessSchedule =
       LinkedHashMap<String, Map<String, dynamic>>.from({
     "Monday": {
@@ -802,7 +797,7 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
             color: Colors.white, // Set the text color
           ),
           controller: businessFullAddressController,
-          keyboardType: TextInputType.phone,
+          keyboardType: TextInputType.streetAddress,
           decoration: buildInputDecoration(
               'Business Full Address', FontAwesomeIcons.locationDot),
         ),
@@ -845,6 +840,18 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
           decoration: buildInputDecoration(
               'Slot duration in minutes', FontAwesomeIcons.timeline),
         ),
+
+        const SizedBox(height: 16),
+        TextField(
+          keyboardType: TextInputType.number,
+          controller: businessAppointmentAmountAllowed,
+          style: const TextStyle(
+            color: Colors.white, // Set the text color
+          ),
+          decoration: buildInputDecoration(
+              'Amount of appointmeants per time slot.',
+              FontAwesomeIcons.peopleGroup),
+        ),
         const SizedBox(height: 16),
         TextField(
           controller: businessAppointmentPoliciesController,
@@ -855,14 +862,125 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
               'Business Appointment Policies', FontAwesomeIcons.calendarCheck),
         ),
         const SizedBox(height: 16),
+
+        const SizedBox(height: 30),
+        const Align(
+          alignment: Alignment.centerLeft, // Align the text to the left
+
+          child: Text(
+            "Business services",
+            style: TextStyle(
+              fontSize: 14.0,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF878493),
+            ),
+          ),
+        ),
+        const SizedBox(height: 30),
+        // Text fields for adding a new service
         TextField(
           style: const TextStyle(
             color: Colors.white, // Set the text color
           ),
-          controller: businessServicesOfferedController,
+          controller: serviceNameController,
           decoration: buildInputDecoration(
-              'Business Services Offered', FontAwesomeIcons.screwdriverWrench),
+              'Service Name', FontAwesomeIcons.screwdriverWrench),
         ),
+        TextField(
+          style: const TextStyle(
+            color: Colors.white, // Set the text color
+          ),
+          controller: serviceAmountController,
+          decoration: buildInputDecoration(
+              'Service Amount', FontAwesomeIcons.moneyBill),
+        ),
+        // Dropdown for selecting payment type
+        DropdownButton<String>(
+          value: selectedPaymentType,
+          items: ['Shekels', 'Dollars', 'Euros'].map((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value, style: const TextStyle(color: Colors.white)),
+            );
+          }).toList(),
+          onChanged: (String? newValue) {
+            setState(() {
+              selectedPaymentType = newValue!;
+            });
+          },
+          dropdownColor:
+              const Color(0xFF161229), // Set the dropdown menu background color
+        ),
+
+        // Button to add a new service
+        ElevatedButton(
+          style: ButtonStyle(
+            backgroundColor: MaterialStateProperty.resolveWith(
+              (states) => const Color(0xFF7B86E2),
+            ),
+          ),
+          onPressed: () {
+            setState(() {
+              final serviceName = serviceNameController.text;
+              final serviceAmount =
+                  _parseServiceAmount(serviceAmountController.text.trim());
+              if (serviceAmount != null) {
+                services.add(
+                  Service(serviceName, serviceAmount, selectedPaymentType),
+                );
+              }
+
+              // Clear the text fields after adding a service
+              serviceNameController.clear();
+              serviceAmountController.clear();
+            });
+          },
+          child: const Text('Add Service'),
+        ),
+
+        SizedBox(
+          width: double.infinity,
+          child: ListView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            itemCount: services.length,
+            itemBuilder: (context, index) {
+              final service = services[index];
+              String currencySymbol = getCurrencySymbol(service.paymentType);
+              return Dismissible(
+                key: UniqueKey(),
+                background: Container(
+                  color: Colors.red,
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: const Icon(
+                    Icons.delete,
+                    color: Colors.white,
+                  ),
+                ),
+                onDismissed: (direction) {
+                  // Remove the item from the data and rebuild the UI
+                  setState(() {
+                    services.removeAt(index);
+                  });
+                },
+                child: ListTile(
+                  trailing: Text('$currencySymbol${service.amount}',
+                      style:
+                          const TextStyle(fontSize: 12, color: Colors.white)),
+                  title: Text(service.name,
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+
+                  // You can customize the ListTile as needed
+                ),
+              );
+            },
+          ),
+        ),
+
         const SizedBox(height: 30),
         const Align(
           alignment: Alignment.centerLeft, // Align the text to the left
@@ -1251,11 +1369,8 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
               userProfileData['businessFullAddress'] ?? '';
           businessAppointmentPoliciesController.text =
               userProfileData['businessAppointmentPolicies'] ?? '';
-          businessServicesOfferedController.text =
-              (userProfileData['businessServicesOffered'] as List<Object?>?)
-                      ?.map((element) => element?.toString() ?? '')
-                      .join(', ') ??
-                  '';
+          businessAppointmentAmountAllowed.text =
+              userProfileData['slotAllowedAmount']?.toString() ?? '1';
 
           businessPhotosController.text =
               (userProfileData['businessPhotos'] as List<Object?>?)
@@ -1272,6 +1387,20 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
             // Use NetworkImage to load the image directly from the URL
             setState(() {
               selectedImage = userProfileData['photoUrl'];
+            });
+          }
+
+          if (userProfileData['services'] != null) {
+            List<dynamic> servicesData = userProfileData['services'];
+
+            setState(() {
+              services = servicesData
+                  .map((data) => Service(
+                        data['name'],
+                        data['amount'].toDouble(),
+                        data['paymentType'],
+                      ))
+                  .toList();
             });
           }
           // Use NetworkImage to load the images directly from the URLs
@@ -1364,6 +1493,19 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
     };
   }
 
+  String getCurrencySymbol(String currencyType) {
+    switch (currencyType) {
+      case 'Shekels':
+        return '₪'; // Replace with the actual symbol for Shekels
+      case 'Dollars':
+        return '\$';
+      case 'Euros':
+        return '€';
+      default:
+        return '';
+    }
+  }
+
   Future<void> _saveUserProfile(BuildContext context) async {
     final FirebaseAuth auth = FirebaseAuth.instance;
     final User? user = auth.currentUser;
@@ -1451,6 +1593,14 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
           _progressController.add(1.0);
         }
 
+        List<Map<String, dynamic>> servicesData = services
+            .map((service) => {
+                  'name': service.name,
+                  'amount': service.amount,
+                  'paymentType': service.paymentType,
+                })
+            .toList();
+
         Map<String, dynamic> updateData = {
           'uid': user.uid,
           'userType': userType,
@@ -1467,10 +1617,9 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
           'businessFullAddress': businessFullAddressController.text.trim(),
           'businessAppointmentPolicies':
               businessAppointmentPoliciesController.text.trim(),
-          'businessServicesOffered': businessServicesOfferedController.text
-              .split(',')
-              .map((e) => e.trim())
-              .toList(),
+          'slotAllowedAmount': _parseSlotAllowedAmount(
+              businessAppointmentAmountAllowed.text.trim()),
+          'services': servicesData,
           'businessPhotos': businessPhotosController.text
               .split(',')
               .map((e) => e.trim())
@@ -1506,6 +1655,44 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
         print("Error: $error");
       }
     }
+  }
+
+  static double? _parseServiceAmount(String input) {
+    if (input.isNotEmpty) {
+      try {
+        return double.parse(input);
+      } catch (e) {
+        // Handle the case where parsing fails (e.g., input is not a valid double)
+        // ignore: avoid_print
+        print('Error parsing serviceAmount: $e');
+      }
+    } else {
+      // Handle the case where the input is empty
+      // ignore: avoid_print
+      print('Input for serviceAmount is empty');
+    }
+
+    // Return null if parsing fails or input is empty
+    return 0;
+  }
+
+  int? _parseSlotAllowedAmount(String input) {
+    if (input.isNotEmpty) {
+      try {
+        return int.parse(input);
+      } catch (e) {
+        // Handle the case where parsing fails (e.g., input is not a valid integer)
+        // ignore: avoid_print
+        print('Error parsing slotAllowedAmount: $e');
+      }
+    } else {
+      // Handle the case where the input is empty
+      // ignore: avoid_print
+      print('Input for slotAllowedAmount is empty');
+    }
+
+    // Return null if parsing fails or input is empty
+    return 1;
   }
 }
 

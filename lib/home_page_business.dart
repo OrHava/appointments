@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:appointments/settings_page.dart';
+import 'package:appointments/stats_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -11,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'appointments_list.dart';
 import 'chat_page.dart';
 import 'first_time_sign_up_page.dart';
+import 'helpers.dart';
 
 class HomePageBusiness extends StatefulWidget {
   final int pageNumber;
@@ -130,9 +132,11 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                     Tab(text: 'Completed'),
                     Tab(text: 'Cancelled'),
                   ],
+                  indicatorSize: TabBarIndicatorSize.tab,
                   indicator: BoxDecoration(
                       color: Color(0xFF7B86E2), // Color of the curvy container
                       borderRadius: BorderRadius.all(Radius.circular(10))),
+
                   indicatorWeight:
                       0, // Set indicatorWeight to 0 to hide the default indicator
                   indicatorColor:
@@ -180,6 +184,7 @@ class HomePageBusinessState extends State<HomePageBusiness> {
           } else {
             List<Appointment> appointments = snapshot.data ?? [];
             return AppointmentsList(
+              type: filter,
               appointments: appointments,
               userType: 2,
               onCancel: () {
@@ -240,7 +245,8 @@ class HomePageBusinessState extends State<HomePageBusiness> {
             // return false; // Placeholder, update as needed
           }
         }).toList();
-        appointments.sort((a, b) => a.startTime.compareTo(b.startTime));
+        // appointments.sort((a, b) => a.startTime.compareTo(b.startTime));
+
         return appointments;
       } else {
         return [];
@@ -467,8 +473,8 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                                     ),
                                   ),
                                   trailing: Text(formattedTime,
-                                      style:
-                                          const TextStyle(color: Colors.white)),
+                                      style: const TextStyle(
+                                          color: Color(0xFF878493))),
                                   title: Text(chatSenderName,
                                       style:
                                           const TextStyle(color: Colors.white)),
@@ -537,251 +543,418 @@ class HomePageBusinessState extends State<HomePageBusiness> {
 
 //_buildHome
   Widget _buildHome() {
-    return Container(
-      color: const Color(0xFF161229),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  height: 120,
-                  decoration: BoxDecoration(
-                    gradient: const RadialGradient(
-                      colors: [Color(0xFF7B86E2), Color(0xFFA796D1)],
-                      center: Alignment.center,
-                      radius: 1.5,
+    final FirebaseAuth auth = FirebaseAuth.instance;
+    final User? user = auth.currentUser;
+
+    if (user != null) {
+      return Container(
+        color: const Color(0xFF161229),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      gradient: const RadialGradient(
+                        colors: [Color(0xFF7B86E2), Color(0xFFA796D1)],
+                        center: Alignment.center,
+                        radius: 1.5,
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(40),
+                        bottomRight: Radius.circular(40),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.6),
+                          spreadRadius: 10,
+                          blurRadius: 30,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(40),
-                      bottomRight: Radius.circular(40),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.6),
-                        spreadRadius: 10,
-                        blurRadius: 30,
-                        offset: const Offset(0, 8),
+                  ),
+                  const Column(
+                    children: [
+                      SizedBox(height: 40),
+                      Text(
+                        'Welcome to Home Business!',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 2.0,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
+                ],
+              ),
+              const SizedBox(height: 40),
+              const Text(
+                'Upcoming Appointments',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 2.0,
                 ),
-                const Column(
-                  children: [
-                    SizedBox(height: 40),
-                    Text(
-                      'Welcome to Home Business!',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 2.0,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 40),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 200),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Expanded(
+                      child: FutureBuilder<List<Appointment>>(
+                        future: getAppointmentsForUser(
+                          FirebaseAuth.instance.currentUser?.uid ?? '',
+                          AppointmentFilter.Upcoming,
+                        ),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          } else if (snapshot.hasError) {
+                            return const Center(
+                              child: Text(
+                                  'Uh-oh! The cosmic planner encountered a supernova.'),
+                            );
+                          } else {
+                            List<Appointment> appointments =
+                                snapshot.data ?? [];
+                            int upcomingAppointmentsCount = appointments.length;
+
+                            if (appointments.isEmpty) {
+                              return const Center(
+                                child: Image(
+                                  fit: BoxFit.contain,
+                                  image: AssetImage(
+                                      'images/no_upcoming_appointments.png'),
+                                ),
+                              );
+                            }
+                            appointments.sort(
+                                (a, b) => a.startTime.compareTo(b.startTime));
+
+                            return Column(
+                              children: [
+                                Center(
+                                  child: Text(
+                                    'Upcoming Appointments Count: $upcomingAppointmentsCount',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Color(0xFF878493),
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment
+                                        .start, // Adjust as needed
+
+                                    children: [
+                                      for (int i = 0;
+                                          i < appointments.length;
+                                          i++)
+                                        Container(
+                                          width: MediaQuery.of(context)
+                                              .size
+                                              .width, // Set a width constraint
+
+                                          margin: const EdgeInsets.symmetric(
+                                              horizontal: 10),
+                                          child: Column(
+                                            children: [
+                                              Container(
+                                                margin:
+                                                    const EdgeInsets.symmetric(
+                                                  vertical: 10,
+                                                  horizontal: 30,
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Stack(
+                                                      children: [
+                                                        Container(
+                                                          width: 70,
+                                                          height: 30,
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: const Color(
+                                                                0xFF7B86E2),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        8),
+                                                          ),
+                                                        ),
+                                                        const Positioned(
+                                                          top: 5,
+                                                          left: 5,
+                                                          child: Icon(
+                                                            Icons.date_range,
+                                                            color: Colors.white,
+                                                            size: 16,
+                                                          ),
+                                                        ),
+                                                        Positioned(
+                                                          top: 5,
+                                                          left: 25,
+                                                          child: Text(
+                                                            DateFormat('MMM d')
+                                                                .format(
+                                                              appointments[i]
+                                                                  .startTime,
+                                                            ),
+                                                            style:
+                                                                const TextStyle(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(width: 20),
+                                                    Expanded(
+                                                      child: Card(
+                                                        shape:
+                                                            RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(15),
+                                                        ),
+                                                        color: const Color(
+                                                            0xFF7B86E2),
+                                                        elevation: 8,
+                                                        child: ListTile(
+                                                          contentPadding:
+                                                              const EdgeInsets
+                                                                  .all(20),
+                                                          title: Text(
+                                                            appointments[i]
+                                                                .name,
+                                                            style:
+                                                                const TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              color:
+                                                                  Colors.white,
+                                                              fontSize: 18,
+                                                            ),
+                                                          ),
+                                                          subtitle: Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .start,
+                                                            children: [
+                                                              Container(
+                                                                height: 5,
+                                                              ),
+                                                              Row(
+                                                                children: [
+                                                                  const Icon(
+                                                                    Icons.phone,
+                                                                    color: Colors
+                                                                        .white,
+                                                                    size: 16,
+                                                                  ),
+                                                                  Container(
+                                                                    width: 5,
+                                                                  ),
+                                                                  Text(
+                                                                    appointments[
+                                                                            i]
+                                                                        .phone,
+                                                                    style:
+                                                                        const TextStyle(
+                                                                      color: Colors
+                                                                          .white,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                              const SizedBox(
+                                                                  height: 8),
+                                                              Row(
+                                                                mainAxisAlignment:
+                                                                    MainAxisAlignment
+                                                                        .start,
+                                                                children: [
+                                                                  const Icon(
+                                                                    Icons
+                                                                        .access_time,
+                                                                    color: Colors
+                                                                        .white,
+                                                                    size: 16,
+                                                                  ),
+                                                                  Container(
+                                                                    width: 10,
+                                                                  ),
+                                                                  Text(
+                                                                    DateFormat(
+                                                                            'HH:mm')
+                                                                        .format(
+                                                                            appointments[i].startTime),
+                                                                    style:
+                                                                        const TextStyle(
+                                                                      color: Colors
+                                                                          .white,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ],
+                                                          ),
+                                                          onTap: () {
+                                                            // print(appointments[i]
+                                                            //     .startTime
+                                                            //     .toString());
+                                                          },
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                    const SizedBox(width: 10),
+                                                    // Vertical timeline line
+                                                    Column(
+                                                      children: [
+                                                        Container(
+                                                          width: 2,
+                                                          height:
+                                                              50, // Adjust the height as needed
+                                                          color: Colors.white,
+                                                        ),
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .all(3.0),
+                                                          child: _getTimelineIcon(
+                                                              appointments[i]
+                                                                  .startTime),
+                                                        ),
+                                                        Container(
+                                                          width: 2,
+                                                          height:
+                                                              50, // Adjust the height as needed
+                                                          color: Colors.white,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+                        },
                       ),
-                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 40),
-            const Text(
-              'Upcoming Appointments',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 2.0,
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 40),
-            FutureBuilder<List<Appointment>>(
-              future: getAppointmentsForUser(
-                FirebaseAuth.instance.currentUser?.uid ?? '',
-                AppointmentFilter.Upcoming,
+              const SizedBox(height: 40),
+              const Text(
+                'Analytics',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 2.0,
+                ),
+                textAlign: TextAlign.center,
               ),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return const Center(
-                    child: Text(
-                        'Uh-oh! The cosmic planner encountered a supernova.'),
-                  );
-                } else {
-                  List<Appointment> appointments = snapshot.data ?? [];
-
-                  if (appointments.isEmpty) {
-                    return const Text('No upcoming appointments');
-                  }
-                  appointments
-                      .sort((a, b) => a.startTime.compareTo(b.startTime));
-
-                  return Column(
-                    children: [
-                      for (int i = 0; i < appointments.length; i++)
-                        Column(
-                          children: [
-                            Container(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 50,
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      height: 1.5,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 5),
-                                  _getTimelineIcon(appointments[i].startTime),
-                                  const SizedBox(width: 5),
-                                  Expanded(
-                                    child: Container(
-                                      height: 1.5,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
+              const SizedBox(height: 10),
+              const Center(
+                child: Text(
+                  'Watch how many view your business Page',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF878493),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  InkWell(
+                    onTap: () {
+                      if (context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const StatsPage(),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      width: 200,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7B86E2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Hero(
+                            tag: 'stats_icon',
+                            child: Icon(
+                              Icons.insert_chart,
+                              size: 30,
+                              color: Colors.white,
                             ),
-                            Container(
-                              margin: const EdgeInsets.symmetric(
-                                vertical: 10,
-                                horizontal: 30,
-                              ),
-                              child: Row(
-                                children: [
-                                  Stack(
-                                    children: [
-                                      Container(
-                                        width: 70,
-                                        height: 30,
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF7B86E2),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                      const Positioned(
-                                        top: 5,
-                                        left: 5,
-                                        child: Icon(
-                                          Icons.date_range,
-                                          color: Colors.white,
-                                          size: 16,
-                                        ),
-                                      ),
-                                      Positioned(
-                                        top: 5,
-                                        left: 25,
-                                        child: Text(
-                                          DateFormat('MMM d').format(
-                                              appointments[i].startTime),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(width: 20),
-                                  Expanded(
-                                    child: Card(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(15),
-                                      ),
-                                      color: const Color(0xFF7B86E2),
-                                      elevation: 8,
-                                      child: ListTile(
-                                        contentPadding:
-                                            const EdgeInsets.all(20),
-                                        title: Text(
-                                          appointments[i].name,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                            fontSize: 18,
-                                          ),
-                                        ),
-                                        subtitle: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Container(
-                                              height: 5,
-                                            ),
-                                            Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.phone,
-                                                  color: Colors.white,
-                                                  size: 16,
-                                                ),
-                                                Container(
-                                                  width: 5,
-                                                ),
-                                                Text(
-                                                  appointments[i].phone,
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.start,
-                                              children: [
-                                                const Icon(
-                                                  Icons.access_time,
-                                                  color: Colors.white,
-                                                  size: 16,
-                                                ),
-                                                Container(
-                                                  width: 10,
-                                                ),
-                                                Text(
-                                                  DateFormat('hh:mm a').format(
-                                                      appointments[i]
-                                                          .startTime),
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                        onTap: () {
-                                          // print(appointments[i]
-                                          //     .startTime
-                                          //     .toString());
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Stats',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
-                          ],
-                        ),
-                    ],
-                  );
-                }
-              },
-            ),
-            // Additional cosmic elements, animations, or transitions can be added here
-          ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                ],
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      return Container();
+    }
   }
 
   Widget _getTimelineIcon(DateTime startTime) {
@@ -826,7 +999,14 @@ class HomePageBusinessState extends State<HomePageBusiness> {
             future: getUserProfile(userId),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+                return Center(
+                  child: Container(
+                    alignment: Alignment.center,
+                    child: const CircularProgressIndicator(
+                      color: Colors.red,
+                    ),
+                  ),
+                );
               } else if (snapshot.hasError) {
                 return Text('Error: ${snapshot.error}');
               } else if (!snapshot.hasData || snapshot.data == null) {
@@ -857,17 +1037,35 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                               child: Row(
                                 children: [
                                   Container(
-                                    margin: const EdgeInsets.only(
-                                        left: 10, top: 10),
+                                    margin:
+                                        const EdgeInsets.only(left: 10, top: 0),
                                     child: Padding(
                                       padding: const EdgeInsets.all(8.0),
-                                      child: Text(
-                                        userProfile.businessName,
-                                        style: const TextStyle(
-                                          fontSize: 24,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                      child: Row(
+                                        children: [
+                                          Text(
+                                            userProfile.businessName,
+                                            style: const TextStyle(
+                                              fontSize: 24,
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 20),
+                                          const Icon(
+                                            Icons.star,
+                                            size: 25,
+                                            color: Colors.yellow,
+                                          ),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            userProfile.businessRating
+                                                .toStringAsFixed(1),
+                                            style: const TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.white),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -966,7 +1164,7 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                                         width: 10,
                                       ),
                                       Text(
-                                        'Owner Name: ${userProfile.ownerName}',
+                                        userProfile.ownerName,
                                         style: const TextStyle(
                                           fontSize: 14,
                                           color: Colors.white,
@@ -995,7 +1193,7 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                                         width: 10,
                                       ),
                                       Text(
-                                        'Phone Number: ${userProfile.phoneNumber}',
+                                        userProfile.phoneNumber,
                                         style: const TextStyle(
                                           fontSize: 14,
                                           color: Colors.white,
@@ -1024,7 +1222,7 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                                         width: 10,
                                       ),
                                       Text(
-                                        'Full Address: ${userProfile.businessFullAddress}',
+                                        userProfile.businessFullAddress,
                                         style: const TextStyle(
                                           fontSize: 14,
                                           color: Colors.white,
@@ -1049,23 +1247,45 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                                           FontAwesomeIcons.waze,
                                           color: Colors.white,
                                         ),
-                                        onPressed: () {
-                                          launchWazeRoute(32.109333, 34.855499);
+                                        onPressed: () async {
+                                          LatLng? coordinates =
+                                              await getAddressCoordinates(
+                                                  userProfile
+                                                      .businessFullAddress);
+
+                                          if (coordinates != null) {
+                                            // print(
+                                            //     'Latitude: ${coordinates.latitude}, Longitude: ${coordinates.longitude}');
+
+                                            launchWazeRoute(
+                                                coordinates.latitude,
+                                                coordinates.longitude);
+                                          }
                                         },
                                       ),
                                       Container(
                                         width: 10,
                                       ),
                                       IconButton(
-                                        icon: const FaIcon(
-                                          FontAwesomeIcons.mapLocation,
-                                          color: Colors.white,
-                                        ),
-                                        onPressed: () {
-                                          launchGoogleMaps(
-                                              32.109333, 34.855499);
-                                        },
-                                      ),
+                                          icon: const FaIcon(
+                                            FontAwesomeIcons.mapLocation,
+                                            color: Colors.white,
+                                          ),
+                                          onPressed: () async {
+                                            LatLng? coordinates =
+                                                await getAddressCoordinates(
+                                                    userProfile
+                                                        .businessFullAddress);
+
+                                            if (coordinates != null) {
+                                              // print(
+                                              //     'Latitude: ${coordinates.latitude}, Longitude: ${coordinates.longitude}');
+
+                                              launchGoogleMaps(
+                                                  coordinates.latitude,
+                                                  coordinates.longitude);
+                                            }
+                                          }),
                                       IconButton(
                                         icon: const Icon(
                                           Icons.policy,
@@ -1165,7 +1385,7 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                       ),
                       const SizedBox(height: 16),
                       Card(
-                        color: Colors.transparent,
+                        color: const Color(0xFF161229),
                         elevation: 2.0,
                         margin: const EdgeInsets.symmetric(vertical: 8.0),
                         child: Padding(
@@ -1196,7 +1416,7 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                       ),
                       const SizedBox(height: 16),
                       Card(
-                        color: Colors.transparent,
+                        color: const Color(0xFF161229),
                         elevation: 2.0,
                         margin: const EdgeInsets.symmetric(vertical: 8.0),
                         child: Padding(
@@ -1212,26 +1432,52 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                                     color: Colors.white),
                               ),
                               const SizedBox(height: 8),
-                              SizedBox(
-                                width: double.infinity,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: userProfile.businessServicesOffered
-                                      .map((service) => Card(
-                                            color: const Color(0xFF7B86E2),
-                                            elevation: 2.0,
-                                            child: ListTile(
-                                              title: Text(
-                                                service,
-                                                style: const TextStyle(
-                                                    fontSize: 12.0,
-                                                    color: Colors.white),
-                                              ),
-                                            ),
-                                          ))
-                                      .toList(),
+                              if (userProfile.services.isNotEmpty)
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ListView.builder(
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    shrinkWrap: true,
+                                    itemCount: userProfile.services.length,
+                                    itemBuilder: (context, index) {
+                                      Service service =
+                                          userProfile.services[index];
+                                      String currencySymbol = getCurrencySymbol(
+                                          service.paymentType);
+                                      return Card(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(15),
+                                          side: const BorderSide(
+                                              color: Color(0xFF878493),
+                                              width: 2.0),
+                                        ),
+                                        color: const Color(0xFF161229),
+                                        elevation: 8,
+                                        child: ListTile(
+                                          trailing: Text(
+                                              '$currencySymbol${service.amount}',
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.white)),
+                                          title: Text(service.name,
+                                              style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white)),
+
+                                          // You can customize the ListTile as needed
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ),
-                              ),
+                              if (userProfile.services.isEmpty)
+                                const Text(
+                                  'No services available.',
+                                  style: TextStyle(color: Color(0xFF878493)),
+                                ),
                             ],
                           ),
                         ),
@@ -1298,6 +1544,19 @@ class HomePageBusinessState extends State<HomePageBusiness> {
     }
   }
 
+  String getCurrencySymbol(String currencyType) {
+    switch (currencyType) {
+      case 'Shekels':
+        return '₪'; // Replace with the actual symbol for Shekels
+      case 'Dollars':
+        return '\$';
+      case 'Euros':
+        return '€';
+      default:
+        return '';
+    }
+  }
+
   void showPopup(BuildContext context, String text) {
     showDialog(
       context: context,
@@ -1346,7 +1605,7 @@ class HomePageBusinessState extends State<HomePageBusiness> {
   Icon getBusinessIcon(String businessType) {
     IconData iconData;
 
-    switch (businessType) {
+    switch (businessType.toLowerCase()) {
       case 'salon':
         iconData = FontAwesomeIcons.scissors;
       case 'spa':
@@ -1403,8 +1662,12 @@ class HomePageBusinessState extends State<HomePageBusiness> {
         bool isAvailable = schedule['available'] ?? true;
 
         return Card(
-          color: const Color(0xFF7B86E2),
-          elevation: 2.0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+            side: const BorderSide(color: Color(0xFF878493), width: 2.0),
+          ),
+          color: const Color(0xFF161229),
+          elevation: 8,
           margin: const EdgeInsets.symmetric(vertical: 8.0),
           child: Padding(
             padding: const EdgeInsets.all(8.0),
@@ -1456,19 +1719,54 @@ class HomePageBusinessState extends State<HomePageBusiness> {
 
   List<Widget> _getImagesWidgets(List<dynamic> images) {
     return images.map((image) {
-      return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8.0),
-        height: 100,
-        width: 100,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: _getImagesProvider(image),
-            fit: BoxFit.cover,
+      return GestureDetector(
+        onTap: () {
+          _showImageDialog(images, images.indexOf(image));
+        },
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8.0),
+          height: 100,
+          width: 100,
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: _getImagesProvider(image),
+              fit: BoxFit.cover,
+            ),
+            borderRadius: BorderRadius.circular(10.0),
           ),
-          borderRadius: BorderRadius.circular(10.0),
         ),
       );
     }).toList();
+  }
+
+  void _showImageDialog(List<dynamic> images, int initialIndex) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.7,
+            width: MediaQuery.of(context).size.width * 0.7,
+            child: PageView.builder(
+              itemCount: images.length,
+              controller: PageController(initialPage: initialIndex),
+              itemBuilder: (context, index) {
+                return Center(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image: _getImagesProvider(images[index]),
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
   }
 
   ImageProvider<Object> _getImagesProvider(dynamic image) {

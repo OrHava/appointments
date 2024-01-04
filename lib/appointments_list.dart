@@ -3,13 +3,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:appointments/business_profile_page.dart';
-
-import 'first_time_sign_up_page.dart';
+import 'helpers.dart';
+import 'home_page_business.dart';
 
 class AppointmentsList extends StatefulWidget {
   final List<Appointment> appointments;
   final VoidCallback? onCancel;
   final int? userType;
+  final AppointmentFilter type;
   final String? username;
   final String? phoneNumber;
 
@@ -20,6 +21,7 @@ class AppointmentsList extends StatefulWidget {
     this.userType,
     this.username,
     this.phoneNumber,
+    required this.type,
   }) : super(key: key);
   @override
   AppointmentsListState createState() => AppointmentsListState();
@@ -28,6 +30,16 @@ class AppointmentsList extends StatefulWidget {
 class AppointmentsListState extends State<AppointmentsList> {
   @override
   Widget build(BuildContext context) {
+    widget.appointments.sort((a, b) {
+      if (widget.type == AppointmentFilter.Cancelled ||
+          widget.type == AppointmentFilter.Completed) {
+        return b.startTime.compareTo(a.startTime);
+      } else {
+        // For appointments that are not completed or canceled, sort based on start time
+        return a.startTime.compareTo(b.startTime);
+      }
+    });
+
     return ListView.builder(
       itemCount: widget.appointments.length,
       itemBuilder: (context, index) {
@@ -176,8 +188,7 @@ class AppointmentsListState extends State<AppointmentsList> {
                           child: const Text(
                             'Cancel',
                             style: TextStyle(
-                              color: Color(0xFF7B86E2),
-                            ),
+                                color: Color(0xFF7B86E2), fontSize: 12),
                           ),
                         ),
                       ),
@@ -219,7 +230,10 @@ class AppointmentsListState extends State<AppointmentsList> {
                                   10), // Adjust the value for more or less curve
                             ),
                           ),
-                          child: const Text('Reschedule'),
+                          child: const Text(
+                            'Reschedule',
+                            style: TextStyle(fontSize: 12),
+                          ),
                         ),
                       ),
                     ],

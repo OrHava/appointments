@@ -1,14 +1,19 @@
 import 'dart:io';
 
-import 'package:appointments/first_time_sign_up_page.dart';
 import 'package:appointments/home_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
 import 'package:firebase_database/firebase_database.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
+import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'appointment_confirmation_popup.dart';
+// import 'package:timezone/timezone.dart' as tz;
+
+import 'first_time_sign_up_page.dart';
+import 'helpers.dart';
+import 'main.dart';
 
 class BusinessProfilePage extends StatefulWidget {
   final String businessId;
@@ -26,25 +31,85 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
   bool isScheduleExpanded = false;
   static const String defaultProfileImageAsset = 'images/background_image.jpg';
   List<String> selectedTimeSlots = [];
+  ValueNotifier<List<String>> selectedTimeSlotsNotifier =
+      ValueNotifier<List<String>>([]);
+
   DateTime selectedDate = DateTime.now();
   String? selectedAppointmentTime;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF161229),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF7B86E2),
-        title: const Text('Business Profile'),
-      ),
-      body: _buildProfile(widget.businessId),
-    );
+    final FirebaseAuth auth = FirebaseAuth.instance;
+    final User? user = auth.currentUser;
+
+    if (user != null) {
+      String currentUserUid = user.uid;
+      return Scaffold(
+        backgroundColor: const Color(0xFF161229),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF7B86E2),
+          title: const Text('Business Profile'),
+        ),
+        body: _buildProfile(widget.businessId, currentUserUid),
+      );
+    } else {
+      return Container();
+    }
   }
 
   @override
   void initState() {
     super.initState();
     selectedDate = DateTime.now();
+
+    recordPageView(widget.businessId);
+  }
+
+  Future<void> recordPageView(String currentUserUid) async {
+    DatabaseReference viewsRef = FirebaseDatabase.instance
+        .ref()
+        .child('statistics')
+        .child(currentUserUid)
+        .child('views');
+    String currentDate = _getCurrentDate();
+    String currentMonth = _getCurrentMonth();
+    String currentYear = _getCurrentYear();
+
+    try {
+      await viewsRef.child('daily').child(currentDate).push().set({'count': 1});
+      await viewsRef
+          .child('monthly')
+          .child(currentMonth)
+          .push()
+          .set({'count': 1});
+      await viewsRef
+          .child('yearly')
+          .child(currentYear)
+          .push()
+          .set({'count': 1});
+      await viewsRef.child('total').push().set({'count': 1});
+
+      // ignore: avoid_print
+      print('Page view recorded successfully.');
+    } catch (error) {
+      // ignore: avoid_print
+      print('Error recording page view: $error');
+    }
+  }
+
+  // Function to get the current date as a string
+  String _getCurrentDate() {
+    return DateTime.now().toUtc().toIso8601String().split('T').first;
+  }
+
+  // Function to get the current month as a string
+  String _getCurrentMonth() {
+    return '${DateTime.now().year}-${DateTime.now().month}';
+  }
+
+  // Function to get the current year as a string
+  String _getCurrentYear() {
+    return DateTime.now().year.toString();
   }
 
   Future<void> bookAppointment(
@@ -125,17 +190,33 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
               commonPushId; // Set the common push ID
           await newAppointmentRef2.set(newAppointmentForBusiness.toJson());
 
+          DateTime notificationTime =
+              combinedDateTime.subtract(const Duration(hours: 5));
+          DateTime currentTime = DateTime.now();
+          Duration difference = notificationTime.difference(currentTime);
+          int secondsUntilNotification = difference.inSeconds;
+
+          startBackgroundTask(
+            secondsUntilNotification,
+            'Your appointment with $businessName is in 5 hours.',
+          );
+
           // You might want to add logic to update the user's appointments list as well
 
-          // Optionally, you can show a success message or navigate to another page
-          if (context.mounted) {
-            setState(() {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Appointment booked successfully!')),
+          setState(() {
+            selectedTimeSlotsNotifier.value.clear();
+            if (context.mounted) {
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AppointmentConfirmationPopup(
+                    businessName: businessName,
+                    startTime: startTime,
+                  );
+                },
               );
-            });
-          }
+            }
+          });
         } catch (error) {
           // Handle errors
           // ignore: avoid_print
@@ -193,7 +274,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
   Icon getBusinessIcon(String businessType) {
     IconData iconData;
 
-    switch (businessType) {
+    switch (businessType.toLowerCase()) {
       case 'salon':
         iconData = FontAwesomeIcons.scissors;
       case 'spa':
@@ -225,7 +306,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
     );
   }
 
-  Widget _buildProfile(String userId) {
+  Widget _buildProfile(String userId, String personalUserId) {
     // Get the current user from FirebaseAuth
 
     return SingleChildScrollView(
@@ -245,6 +326,22 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
             } else {
               // User profile data is available, display it
               UserProfile userProfile = UserProfile.fromJson(snapshot.data!);
+
+              // Check if the current user is blocked
+              if (userProfile.blockedUserIds.contains(personalUserId)) {
+                return Column(
+                  children: [
+                    Container(
+                      height: 150,
+                    ),
+                    const Center(
+                        child: Text(
+                      'You are blocked by this business.',
+                      style: TextStyle(color: Colors.white),
+                    )),
+                  ],
+                );
+              }
 
               return Center(
                 child: Column(
@@ -266,16 +363,38 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                           Align(
                             alignment: Alignment.topLeft,
                             child: Container(
-                              margin: const EdgeInsets.only(left: 10, top: 10),
+                              margin: const EdgeInsets.only(left: 10),
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  userProfile.businessName,
-                                  style: const TextStyle(
-                                    fontSize: 24,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      userProfile.businessName,
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 20),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.star,
+                                        size: 25,
+                                        color: Colors.yellow,
+                                      ),
+                                      onPressed: () {
+                                        showRatingDialog(context, userProfile,
+                                            personalUserId);
+                                      },
+                                    ),
+                                    Text(
+                                      userProfile.businessRating
+                                          .toStringAsFixed(1),
+                                      style: const TextStyle(
+                                          fontSize: 14, color: Colors.white),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -352,7 +471,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                                       width: 10,
                                     ),
                                     Text(
-                                      'Owner Name: ${userProfile.ownerName}',
+                                      userProfile.ownerName,
                                       style: const TextStyle(
                                         fontSize: 14,
                                         color: Colors.white,
@@ -380,7 +499,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                                       width: 10,
                                     ),
                                     Text(
-                                      'Phone Number: ${userProfile.phoneNumber}',
+                                      userProfile.phoneNumber,
                                       style: const TextStyle(
                                         fontSize: 14,
                                         color: Colors.white,
@@ -408,7 +527,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                                       width: 10,
                                     ),
                                     Text(
-                                      'Full Address: ${userProfile.businessFullAddress}',
+                                      userProfile.businessFullAddress,
                                       style: const TextStyle(
                                         fontSize: 14,
                                         color: Colors.white,
@@ -432,22 +551,44 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                                         FontAwesomeIcons.waze,
                                         color: Colors.white,
                                       ),
-                                      onPressed: () {
-                                        launchWazeRoute(32.109333, 34.855499);
+                                      onPressed: () async {
+                                        LatLng? coordinates =
+                                            await getAddressCoordinates(
+                                                userProfile
+                                                    .businessFullAddress);
+
+                                        if (coordinates != null) {
+                                          // print(
+                                          //     'Latitude: ${coordinates.latitude}, Longitude: ${coordinates.longitude}');
+
+                                          launchWazeRoute(coordinates.latitude,
+                                              coordinates.longitude);
+                                        }
                                       },
                                     ),
                                     Container(
                                       width: 10,
                                     ),
                                     IconButton(
-                                      icon: const FaIcon(
-                                        FontAwesomeIcons.mapLocation,
-                                        color: Colors.white,
-                                      ),
-                                      onPressed: () {
-                                        launchGoogleMaps(32.109333, 34.855499);
-                                      },
-                                    ),
+                                        icon: const FaIcon(
+                                          FontAwesomeIcons.mapLocation,
+                                          color: Colors.white,
+                                        ),
+                                        onPressed: () async {
+                                          LatLng? coordinates =
+                                              await getAddressCoordinates(
+                                                  userProfile
+                                                      .businessFullAddress);
+
+                                          if (coordinates != null) {
+                                            // print(
+                                            //     'Latitude: ${coordinates.latitude}, Longitude: ${coordinates.longitude}');
+
+                                            launchGoogleMaps(
+                                                coordinates.latitude,
+                                                coordinates.longitude);
+                                          }
+                                        }),
                                     IconButton(
                                       icon: const Icon(
                                         Icons.policy,
@@ -543,6 +684,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                     ),
                     const SizedBox(height: 16),
                     _buildBusinessSchedule(
+                        userProfile.slotAllowedAmount,
                         userProfile.businessSchedule,
                         userProfile.appointmentsByDate,
                         userProfile.slotDurationInMinutes),
@@ -571,7 +713,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                     ),
                     const SizedBox(height: 16),
                     Card(
-                      color: Colors.transparent,
+                      color: const Color(0xFF161229),
                       elevation: 2.0,
                       margin: const EdgeInsets.symmetric(vertical: 8.0),
                       child: Padding(
@@ -601,7 +743,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                     ),
                     const SizedBox(height: 16),
                     Card(
-                      color: Colors.transparent,
+                      color: const Color(0xFF161229),
                       elevation: 2.0,
                       margin: const EdgeInsets.symmetric(vertical: 8.0),
                       child: Padding(
@@ -617,30 +759,47 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                                   color: Colors.white),
                             ),
                             const SizedBox(height: 8),
-                            Text(
-                              'Services the business has to offer:',
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.grey.shade600),
-                            ),
-                            SizedBox(
-                              width: double.infinity,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: userProfile.businessServicesOffered
-                                    .map((service) => Card(
-                                          color: const Color(0xFF7B86E2),
-                                          elevation: 2.0,
-                                          child: ListTile(
-                                            title: Text(
-                                              service,
-                                              style: const TextStyle(
-                                                  fontSize: 12.0),
-                                            ),
-                                          ),
-                                        ))
-                                    .toList(),
+                            if (userProfile.services.isNotEmpty)
+                              SizedBox(
+                                width: double.infinity,
+                                child: ListView.builder(
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  shrinkWrap: true,
+                                  itemCount: userProfile.services.length,
+                                  itemBuilder: (context, index) {
+                                    Service service =
+                                        userProfile.services[index];
+                                    String currencySymbol =
+                                        getCurrencySymbol(service.paymentType);
+                                    return Card(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(15),
+                                        side: const BorderSide(
+                                            color: Color(0xFF878493),
+                                            width: 2.0),
+                                      ),
+                                      color: const Color(0xFF161229),
+                                      elevation: 8,
+                                      child: ListTile(
+                                        trailing: Text(
+                                            '$currencySymbol${service.amount}',
+                                            style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.white)),
+                                        title: Text(service.name,
+                                            style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white)),
+
+                                        // You can customize the ListTile as needed
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
+                            if (userProfile.services.isEmpty)
+                              const Text('No services available.'),
                           ],
                         ),
                       ),
@@ -674,6 +833,110 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
         ),
       ),
     );
+  }
+
+  String getCurrencySymbol(String currencyType) {
+    switch (currencyType) {
+      case 'Shekels':
+        return '₪'; // Replace with the actual symbol for Shekels
+      case 'Dollars':
+        return '\$';
+      case 'Euros':
+        return '€';
+      default:
+        return '';
+    }
+  }
+
+  Future<void> showRatingDialog(
+    BuildContext context,
+    UserProfile userProfile,
+    String userId,
+  ) async {
+    double userRating = 0.0;
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Rate the business'),
+          content: RatingBar.builder(
+            initialRating: userRating,
+            minRating: 1,
+            direction: Axis.horizontal,
+            allowHalfRating: false,
+            itemCount: 5,
+            itemSize: 30.0,
+            itemBuilder: (context, _) => const Icon(
+              Icons.star,
+              color: Colors.amber,
+            ),
+            onRatingUpdate: (rating) {
+              userRating = rating;
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                // Save the rating to the business profile
+                saveBusinessRating(userRating, userProfile, userId);
+                Navigator.of(context).pop();
+              },
+              child: const Text('Submit'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void saveBusinessRating(
+      double rating, UserProfile userProfile, String currentUserUid) {
+    DatabaseReference businessRef =
+        FirebaseDatabase.instance.ref().child('users').child(widget.businessId);
+
+    // Check if the current user has already rated the business
+    if (userProfile.ratedUserIds.contains(currentUserUid)) {
+      // User has already rated, update the existing rating
+      double oldRating = userProfile.ratings[currentUserUid] ?? 0;
+      int numberOfRatings = userProfile.ratedUserIds.length;
+
+      double newBusinessRating =
+          (userProfile.businessRating * numberOfRatings - oldRating + rating) /
+              numberOfRatings.toDouble();
+
+      setState(() {
+        businessRef.update({
+          'businessRating': newBusinessRating,
+          'ratings/$currentUserUid': rating,
+        });
+      });
+    } else {
+      // Add the current user's ID to the ratedUserIds list
+      userProfile.ratedUserIds.add(currentUserUid);
+
+      // Update the rating for the current user
+      userProfile.ratings[currentUserUid] = rating;
+
+      double newBusinessRating =
+          (userProfile.businessRating * (userProfile.ratedUserIds.length - 1) +
+                  rating) /
+              userProfile.ratedUserIds.length.toDouble();
+
+      setState(() {
+        businessRef.update({
+          'businessRating': newBusinessRating,
+          'ratedUserIds': userProfile.ratedUserIds,
+          'ratings': userProfile.ratings,
+        });
+      });
+    }
   }
 
   Future<void> launchWazeRoute(double lat, double lng) async {
@@ -824,6 +1087,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
   }
 
   Widget _buildBusinessSchedule(
+      int slotAllowedAmount,
       Map<String, Map<String, dynamic>> businessSchedule,
       Map<String, List<Appointment>>? appointmentsByDate,
       int slotDurationInMinutes) {
@@ -865,14 +1129,15 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
             ),
           ),
           const SizedBox(height: 5),
-          buildTimeSlotsRow(
-              businessSchedule, appointmentsByDate, slotDurationInMinutes),
+          buildTimeSlotsRow(slotAllowedAmount, businessSchedule,
+              appointmentsByDate, slotDurationInMinutes),
         ],
       ),
     );
   }
 
   Widget buildTimeSlotsRow(
+      int slotAllowedAmount,
       Map<String, Map<String, dynamic>> businessSchedule,
       Map<String, List<Appointment>>? appointmentsByDate,
       int slotDurationInMinutes) {
@@ -902,8 +1167,8 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            buildTimeSlotsListView(schedule, businessSchedule,
-                appointmentsByDate, slotDurationInMinutes),
+            buildTimeSlotsListView(slotAllowedAmount, schedule,
+                businessSchedule, appointmentsByDate, slotDurationInMinutes),
           ],
         ),
       ),
@@ -977,8 +1242,6 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
       onTap: () {
         if (isAvailable) {
           setState(() {
-            //selectedDate = DateFormat('MM/dd').parse(day);
-
             selectedDate = date;
           });
         }
@@ -1039,6 +1302,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
   }
 
   Future<List<bool>> _getBookedStatusForTimeSlots(
+    int slotAllowedAmount,
     List<TimeOfDay> timeSlots,
     DateTime selectedDate,
     Map<String, Map<String, dynamic>> businessSchedule,
@@ -1047,7 +1311,8 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
 
     for (int i = 0; i < timeSlots.length; i++) {
       String timeSlot = _formatTimeOfDay(timeSlots[i]);
-      futures.add(isTimeSlotBooked(timeSlot, selectedDate, businessSchedule));
+      futures.add(isTimeSlotBooked(
+          slotAllowedAmount, timeSlot, selectedDate, businessSchedule));
     }
 
     List<bool> isBookedList = await Future.wait(futures);
@@ -1055,6 +1320,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
   }
 
   Widget buildTimeSlotsListView(
+      int slotAllowedAmount,
       Map<String, dynamic> schedule,
       Map<String, Map<String, dynamic>> businessSchedule,
       Map<String, List<Appointment>>? appointmentsByDate,
@@ -1085,7 +1351,11 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
       height: 200,
       child: FutureBuilder<List<bool>>(
         future: _getBookedStatusForTimeSlots(
-            timeSlots, selectedDate, businessSchedule),
+          slotAllowedAmount,
+          timeSlots,
+          selectedDate,
+          businessSchedule,
+        ),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             // Loading indicator or some placeholder while waiting for the result
@@ -1109,7 +1379,11 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: buildChoiceChip(
-                      timeSlot, businessSchedule, appointmentsByDate, isBooked),
+                    timeSlot,
+                    businessSchedule,
+                    appointmentsByDate,
+                    isBooked,
+                  ),
                 );
               },
             );
@@ -1125,48 +1399,63 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
     Map<String, List<Appointment>>? appointmentsByDate,
     bool isBooked,
   ) {
-    bool isSelected = selectedTimeSlots.contains(timeSlot);
+    return ValueListenableBuilder<List<String>>(
+      valueListenable: selectedTimeSlotsNotifier,
+      builder: (context, selectedTimeSlots, child) {
+        bool isSelected = selectedTimeSlots.contains(timeSlot);
 
-    return ChoiceChip(
-      label: Text(
-        timeSlot,
-        style: TextStyle(
-          color: isSelected
-              ? const Color(0xFF7B86E2)
-              : isBooked
-                  ? Colors.grey
-                  : Colors.black,
-        ),
-      ),
-      selected: isSelected,
-      selectedColor: Colors.transparent,
-      backgroundColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        side: BorderSide(
-          color: isSelected
-              ? const Color(0xFF7B86E2)
-              : isBooked
-                  ? Colors.grey
-                  : Colors.grey,
-          width: 2.0,
-        ),
-      ),
-      onSelected: isBooked
-          ? null
-          : (bool selected) {
-              setState(() {
-                selectedTimeSlots.clear();
-                if (selected) {
-                  selectedAppointmentTime = timeSlot;
-                  selectedTimeSlots.add(timeSlot);
-                }
-              });
+        return ChoiceChip(
+          label: Text(
+            timeSlot,
+            style: TextStyle(
+              color: isSelected
+                  ? const Color(0xFF7B86E2)
+                  : isBooked
+                      ? Colors.grey
+                      : Colors.black,
+            ),
+          ),
+          color: MaterialStateProperty.resolveWith<Color?>(
+            (Set<MaterialState> states) {
+              if (states.contains(MaterialState.disabled)) {
+                // Return the color for the disabled state
+                return Colors.grey;
+              }
+              // Return the color for the default state
+              return Colors.transparent;
             },
+          ),
+          selected: isSelected,
+          selectedColor: Colors.transparent,
+          backgroundColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            side: BorderSide(
+              color: isSelected
+                  ? const Color(0xFF7B86E2)
+                  : isBooked
+                      ? Colors.grey
+                      : Colors.grey,
+              width: 2.0,
+            ),
+          ),
+          onSelected: isBooked
+              ? null
+              : (bool selected) {
+                  List<String> newSelectedTimeSlots = [];
+                  if (selected) {
+                    newSelectedTimeSlots.add(timeSlot);
+                    selectedAppointmentTime = timeSlot;
+                  }
+                  selectedTimeSlotsNotifier.value = newSelectedTimeSlots;
+                },
+        );
+      },
     );
   }
 
   Future<bool> isTimeSlotBooked(
+    int slotAllowedAmount,
     String timeSlot,
     DateTime selectedDate,
     Map<String, Map<String, dynamic>> businessSchedule,
@@ -1180,7 +1469,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
 
       // Create the selected DateTime
       DateTime selectedDateTime = DateTime(
-        selectedDate.year, //need to fix
+        selectedDate.year,
         selectedDate.month,
         selectedDate.day,
         timeComponents[0],
@@ -1202,16 +1491,16 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
       int hour = hourMinuteComponents[0];
       int minute = hourMinuteComponents[1];
 
-// Adjust the hour based on AM/PM
+      // Adjust the hour based on AM/PM
       if (amPm == 'pm' && hour < 12) {
         hour += 12;
       } else if (amPm == 'am' && hour == 12) {
         hour = 0;
       }
 
-// Create a new DateTime for the check
+      // Create a new DateTime for the check
       DateTime checkDateTime = DateTime(
-        selectedDate.year, //need to fix
+        selectedDate.year,
         selectedDate.month,
         selectedDate.day,
         hour,
@@ -1224,10 +1513,10 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
 
       // Check if userAppointments is empty
       if (userAppointments.isEmpty) {
-        // If there are no appointments, the time slot is not booked
-
-        return false;
+        // If there are no appointments, check if the slotAllowedAmount is exceeded
+        return userAppointments.length >= slotAllowedAmount;
       }
+
       // Check if the selected date is available based on the business schedule
       bool isAvailable =
           businessSchedule[getWeekdayString(checkDateTime.weekday)]
@@ -1246,6 +1535,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
       }
 
       // Iterate through user appointments
+      int appointmentsForSlot = 0;
       for (Appointment appointment in userAppointments) {
         // Convert appointment times to local DateTime
         DateTime appointmentStart = appointment.startTime.toLocal();
@@ -1265,14 +1555,13 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
 
         // Check if adjustedSelectedDateTime is within the appointment range
         if (adjustedSelectedDateTime.isAtSameMomentAs(appointmentStart)) {
-          // The selected time slot is already booked
-          return true;
+          // Increment the count for appointments in the same time slot
+          appointmentsForSlot++;
         }
       }
 
-      // If none of the conditions are met, the time slot is not booked
-
-      return false;
+      // Check if the number of appointments exceeds the allowed slot amount
+      return appointmentsForSlot >= slotAllowedAmount;
     } catch (error) {
       // Handle errors
       // ignore: avoid_print
@@ -1281,6 +1570,123 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
       return false;
     }
   }
+
+//    Future<bool> isTimeSlotBooked(
+//     int slotAllowedAmount,
+//     String timeSlot,
+//     DateTime selectedDate,
+//     Map<String, Map<String, dynamic>> businessSchedule,
+//   ) async {
+//     try {
+//       // Parse the selected time slot
+//       List<int> timeComponents = timeSlot
+//           .split(':')
+//           .map((component) => int.parse(component.split(' ')[0]))
+//           .toList();
+
+//       // Create the selected DateTime
+//       DateTime selectedDateTime = DateTime(
+//         selectedDate.year, //need to fix
+//         selectedDate.month,
+//         selectedDate.day,
+//         timeComponents[0],
+//         timeComponents[1],
+//       );
+
+//       String amPm = timeSlot.substring(timeSlot.length - 2).toLowerCase();
+
+//       List<String> timeComponents2 = [
+//         timeSlot.substring(0, timeSlot.length - 2),
+//         amPm,
+//       ];
+
+//       List<int> hourMinuteComponents = timeComponents2[0]
+//           .split(':')
+//           .map((component) => int.parse(component))
+//           .toList();
+
+//       int hour = hourMinuteComponents[0];
+//       int minute = hourMinuteComponents[1];
+
+// // Adjust the hour based on AM/PM
+//       if (amPm == 'pm' && hour < 12) {
+//         hour += 12;
+//       } else if (amPm == 'am' && hour == 12) {
+//         hour = 0;
+//       }
+
+// // Create a new DateTime for the check
+//       DateTime checkDateTime = DateTime(
+//         selectedDate.year, //need to fix
+//         selectedDate.month,
+//         selectedDate.day,
+//         hour,
+//         minute,
+//       );
+
+//       // Get user appointments
+//       List<Appointment> userAppointments =
+//           await getAppointmentsForUser(widget.businessId);
+
+//       // Check if userAppointments is empty
+//       if (userAppointments.isEmpty) {
+//         // If there are no appointments, the time slot is not booked
+
+//         return false;
+//       }
+//       // Check if the selected date is available based on the business schedule
+//       bool isAvailable =
+//           businessSchedule[getWeekdayString(checkDateTime.weekday)]
+//                   ?['available'] ??
+//               false;
+
+//       if (!isAvailable) {
+//         // If the selected date is not available, the time slot is booked
+//         return true;
+//       }
+
+//       // Check if selectedDateTime is in the past and it's for today
+//       if (checkDateTime.isBefore(DateTime.now()) &&
+//           selectedDateTime.day == DateTime.now().day) {
+//         return true;
+//       }
+
+//       // Iterate through user appointments
+//       for (Appointment appointment in userAppointments) {
+//         // Convert appointment times to local DateTime
+//         DateTime appointmentStart = appointment.startTime.toLocal();
+
+//         // Adjust appointmentStart hours if it's in PM
+//         if (appointment.startTime.hour >= 12) {
+//           appointmentStart =
+//               appointmentStart.subtract(const Duration(hours: 12));
+//         }
+
+//         // Adjust selectedDateTime hours if it's in PM
+//         DateTime adjustedSelectedDateTime = selectedDateTime;
+//         if (selectedDateTime.hour >= 12) {
+//           adjustedSelectedDateTime =
+//               selectedDateTime.subtract(const Duration(hours: 12));
+//         }
+
+//         // Check if adjustedSelectedDateTime is within the appointment range
+//         if (adjustedSelectedDateTime.isAtSameMomentAs(appointmentStart)) {
+//           // The selected time slot is already booked
+//           return true;
+//         }
+//       }
+
+//       // If none of the conditions are met, the time slot is not booked
+
+//       return false;
+//     } catch (error) {
+//       // Handle errors
+//       // ignore: avoid_print
+//       print('Error in isTimeSlotBooked: $error');
+//       // Return false in case of an error (consider handling errors more gracefully)
+//       return false;
+//     }
+//   }
 
   Future<List<Appointment>> getAppointmentsForUser(String userUid) async {
     try {

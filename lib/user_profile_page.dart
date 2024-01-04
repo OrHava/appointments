@@ -1,5 +1,6 @@
 import 'package:appointments/first_time_sign_up_page.dart';
 import 'package:appointments/home_page_business.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 //import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -10,6 +11,7 @@ class UserProfilePage extends StatefulWidget {
   final String businessId;
   final String userName;
   final String userPhone;
+
   const UserProfilePage(this.businessId, this.userName, this.userPhone,
       {Key? key})
       : super(key: key);
@@ -24,17 +26,73 @@ class UserProfilePageState extends State<UserProfilePage> {
   List<String> selectedTimeSlots = [];
   DateTime selectedDate = DateTime.now();
   String? selectedAppointmentTime;
-
+  bool isBlocked = false; // Add this variable to track block status
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF161229),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF7B86E2),
-        title: const Text('User Profile'),
-      ),
-      body: _buildProfile(widget.businessId),
-    );
+    final FirebaseAuth auth = FirebaseAuth.instance;
+    final User? user = auth.currentUser;
+
+    if (user != null) {
+      String currentUserUid = user.uid;
+      return Scaffold(
+        backgroundColor: const Color(0xFF161229),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF7B86E2),
+          title: const Text('User Profile'),
+        ),
+        body: _buildProfile(widget.businessId, currentUserUid),
+      );
+    } else {
+      return Container();
+    }
+  }
+
+  // Update the initState method to check block status
+  @override
+  void initState() {
+    super.initState();
+    final FirebaseAuth auth = FirebaseAuth.instance;
+    final User? user = auth.currentUser;
+
+    if (user != null) {
+      String currentUserUid = user.uid;
+      fetchBlockStatus(currentUserUid);
+    }
+  }
+
+// Add this method to set the initial block status
+  Future<void> fetchBlockStatus(String currentUserUid) async {
+    try {
+      bool blocked = await isUserBlocked(widget.businessId,
+          currentUserUid); // Replace with the actual current user ID
+      setState(() {
+        isBlocked = blocked;
+      });
+    } catch (error) {
+      // ignore: avoid_print
+      print("Error fetching block status: $error");
+    }
+  }
+
+  Future<bool> isUserBlocked(String businessId, String userId) async {
+    try {
+      DatabaseReference reference = FirebaseDatabase.instance.ref();
+      final snapshot = await reference.child('users/$userId').get();
+
+      if (snapshot.exists) {
+        Map<dynamic, dynamic> values = snapshot.value as Map<dynamic, dynamic>;
+        UserProfile userProfile = UserProfile.fromJson(values);
+        List<String> blockedUserIds =
+            List<String>.from(userProfile.blockedUserIds);
+        return blockedUserIds.contains(businessId);
+      }
+
+      return false;
+    } catch (error) {
+      // ignore: avoid_print
+      print("Error checking block status: $error");
+      return false;
+    }
   }
 
   Future<Map<dynamic, dynamic>?> getUserProfile(String userId) async {
@@ -72,7 +130,42 @@ class UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
-  Widget _buildProfile(String userId) {
+  Future<void> toggleBlockUser(String businessId, String userId) async {
+    try {
+      DatabaseReference reference = FirebaseDatabase.instance.ref();
+      final snapshot = await reference.child('users/$userId').get();
+
+      if (snapshot.exists) {
+        Map<dynamic, dynamic> values = snapshot.value as Map<dynamic, dynamic>;
+        UserProfile userProfile = UserProfile.fromJson(values);
+        List<String> blockedUserIds =
+            List<String>.from(userProfile.blockedUserIds);
+
+        // Toggle block status
+        if (blockedUserIds.contains(businessId)) {
+          blockedUserIds.remove(businessId);
+        } else {
+          blockedUserIds.add(businessId);
+        }
+
+        // Use update to add or remove the blocked user ID
+        await reference
+            .child('users/$userId')
+            .update({'blockedUserIds': blockedUserIds});
+
+        // Update state to reflect the change
+        setState(() {
+          isBlocked = !isBlocked;
+        });
+      }
+    } catch (error) {
+      // Handle errors here
+      // ignore: avoid_print
+      print("Error toggling block status: $error");
+    }
+  }
+
+  Widget _buildProfile(String userId, String personalID) {
     // Get the current user from FirebaseAuth
 
     return SingleChildScrollView(
@@ -145,7 +238,7 @@ class UserProfilePageState extends State<UserProfilePage> {
                                       width: 10,
                                     ),
                                     Text(
-                                      'Phone Number: ${userProfile.phoneNumber}',
+                                      userProfile.phoneNumber,
                                       style: const TextStyle(
                                         fontSize: 14,
                                         color: Colors.white,
@@ -180,6 +273,35 @@ class UserProfilePageState extends State<UserProfilePage> {
                                                           widget.businessId),
                                             ));
                                       },
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        toggleBlockUser(
+                                            widget.businessId, personalID);
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors
+                                            .red, // Change color as needed
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            isBlocked
+                                                ? Icons.unarchive
+                                                : Icons
+                                                    .block, // Change icons as needed
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            isBlocked ? 'Unblock' : 'Block',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),

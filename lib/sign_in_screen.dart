@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -265,24 +266,49 @@ class SignInScreenState extends State<SignInScreen> {
           MaterialPageRoute(builder: (context) => const FirstTimeSignUpPage()),
         );
       } else {
+        if (context.mounted) {
+          redirectToHomePage(context, userType);
+        }
         // Redirect based on user type
-        redirectToHomePage(context, userType);
       }
     } catch (e) {
       // Handle sign-in errors
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+          ),
+        );
+      }
     }
   }
 
-  Future<void> signInWithGoogle(BuildContext context) async {
+  Future<User?> signInWithGoogle(BuildContext context) async {
     await GoogleSignIn().signOut();
 
     try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      GoogleSignInAccount? googleUser;
+
+      // Check the platform and use the appropriate GoogleSignIn package
+      if (kIsWeb) {
+        // Web implementation
+        final FirebaseAuth auth = FirebaseAuth.instance;
+        // The `GoogleAuthProvider` can only be used while running on the web
+        GoogleAuthProvider authProvider = GoogleAuthProvider();
+        try {
+          final UserCredential userCredential =
+              await auth.signInWithPopup(authProvider);
+
+          return userCredential.user;
+        } catch (e) {
+          debugPrint('error on web signin: $e');
+          rethrow;
+        }
+      } else {
+        // Mobile implementation
+        googleUser = await GoogleSignIn().signIn();
+      }
+
       final GoogleSignInAuthentication googleAuth =
           await googleUser!.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
@@ -305,7 +331,9 @@ class SignInScreenState extends State<SignInScreen> {
         );
       } else {
         // Redirect based on user type
-        redirectToHomePage(context, userType);
+        if (context.mounted) {
+          redirectToHomePage(context, userType);
+        }
       }
     } catch (e) {
       // Handle Google sign-in errors
@@ -319,7 +347,54 @@ class SignInScreenState extends State<SignInScreen> {
         );
       }
     }
+    return null;
   }
+
+  // Future<void> signInWithGoogle(BuildContext context) async {
+  //   await GoogleSignIn().signOut();
+
+  //   try {
+  //     final GoogleSignInAccount? googleUser = await GoogleSignIn(
+  //       clientId:
+  //           "401963892153-rfkmrm58uv6mi48qme7r99d4bqgmanl7.apps.googleusercontent.com",
+  //     ).signIn();
+  //     final GoogleSignInAuthentication googleAuth =
+  //         await googleUser!.authentication;
+  //     final AuthCredential credential = GoogleAuthProvider.credential(
+  //       accessToken: googleAuth.accessToken,
+  //       idToken: googleAuth.idToken,
+  //     );
+
+  //     UserCredential userCredential =
+  //         await FirebaseAuth.instance.signInWithCredential(credential);
+
+  //     // Get user type
+  //     String? userType = await getUserType(userCredential.user!.uid);
+
+  //     // Check if the user is signing in for the first time
+  //     if (userCredential.additionalUserInfo!.isNewUser && context.mounted) {
+  //       // Redirect the user to a different page for the first-time sign-in
+  //       Navigator.pushReplacement(
+  //         context,
+  //         MaterialPageRoute(builder: (context) => const FirstTimeSignUpPage()),
+  //       );
+  //     } else {
+  //       // Redirect based on user type
+  //       redirectToHomePage(context, userType);
+  //     }
+  //   } catch (e) {
+  //     // Handle Google sign-in errors
+  //     // ignore: avoid_print
+  //     print(e.toString());
+  //     if (context.mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: Text(e.toString()),
+  //         ),
+  //       );
+  //     }
+  //   }
+  // }
 
   void redirectToHomePage(BuildContext context, String? userType) {
     if (userType == 'user') {

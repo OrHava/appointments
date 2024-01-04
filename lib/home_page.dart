@@ -8,15 +8,8 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import 'chat_page.dart';
 import 'first_time_sign_up_page.dart';
-
-enum AppointmentFilter {
-  // ignore: constant_identifier_names
-  Upcoming,
-  // ignore: constant_identifier_names
-  Completed,
-  // ignore: constant_identifier_names
-  Cancelled,
-}
+import 'helpers.dart';
+import 'home_page_business.dart';
 
 class HomePage extends StatefulWidget {
   final int pageNumber;
@@ -421,91 +414,108 @@ class HomePageState extends State<HomePage> {
           UserProfile userProfile = UserProfile.fromJson(snapshot.data!);
           return Column(
             children: [
-              SizedBox(
-                width: 150, // Adjust the width as needed
-                height: 180, // Adjust the height as needed
-                child: Stack(
-                  alignment: Alignment.bottomCenter,
-                  children: [
-                    Positioned(
-                      bottom:
-                          0, // Adjust the bottom position to control the card visibility
-                      child: SizedBox(
-                        width: 150,
-                        height: 160,
-                        child: Card(
-                          color: Colors.transparent,
-                          elevation: 8,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(15.0),
-                              bottom: Radius.circular(
-                                  35.0), // Set bottom border radius to 0
+              GestureDetector(
+                onTap: () {
+                  FocusScope.of(context).unfocus();
+
+                  // Navigate to BusinessProfilePage
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BusinessProfilePage(
+                        appointment.userId,
+                        userName,
+                        userPhone, //here is the problem
+                      ),
+                    ),
+                  );
+                },
+                child: SizedBox(
+                  width: 150, // Adjust the width as needed
+                  height: 180, // Adjust the height as needed
+                  child: Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      Positioned(
+                        bottom:
+                            0, // Adjust the bottom position to control the card visibility
+                        child: SizedBox(
+                          width: 150,
+                          height: 160,
+                          child: Card(
+                            color: Colors.transparent,
+                            elevation: 8,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(15.0),
+                                bottom: Radius.circular(
+                                    35.0), // Set bottom border radius to 0
+                              ),
+                              side: BorderSide(
+                                color: Color(0xFF7B86E2),
+                                width: 2.0,
+                              ),
                             ),
-                            side: BorderSide(
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 50),
+                                Text(
+                                  userProfile.businessName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  userProfile.businessFullAddress,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  userProfile.businessType,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top:
+                            0, // Adjust the top position to control the image visibility
+                        child: Card(
+                          elevation: 8,
+                          color: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15.0),
+                            side: const BorderSide(
                               color: Color(0xFF7B86E2),
                               width: 2.0,
                             ),
                           ),
-                          child: Column(
-                            children: [
-                              const SizedBox(height: 70),
-                              Text(
-                                userProfile.businessName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(15.0),
+                              child: Image.network(
+                                userProfile.photoUrl ??
+                                    'https://example.com/default_image.jpg',
+                                height: 60, // Adjust the height as needed
+                                width: 60, // Adjust the width as needed
+                                fit: BoxFit.cover,
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                userProfile.businessFullAddress,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                userProfile.businessType,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top:
-                          0, // Adjust the top position to control the image visibility
-                      child: Card(
-                        elevation: 8,
-                        color: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15.0),
-                          side: const BorderSide(
-                            color: Color(0xFF7B86E2),
-                            width: 2.0,
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(4.0),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(15.0),
-                            child: Image.network(
-                              userProfile.photoUrl ??
-                                  'https://example.com/default_image.jpg',
-                              height: 60, // Adjust the height as needed
-                              width: 60, // Adjust the width as needed
-                              fit: BoxFit.cover,
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -625,6 +635,7 @@ class HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.all(Radius.circular(10))),
                   indicatorWeight:
                       0, // Set indicatorWeight to 0 to hide the default indicator
+                  indicatorSize: TabBarIndicatorSize.tab,
                   indicatorColor:
                       Colors.white, // Color of the selection indicator
 
@@ -671,6 +682,7 @@ class HomePageState extends State<HomePage> {
             List<Appointment> appointments = snapshot.data ?? [];
             return AppointmentsList(
               appointments: appointments,
+              type: filter,
               userType: 1,
               username: userName,
               phoneNumber: userPhone,
@@ -729,7 +741,6 @@ class HomePageState extends State<HomePage> {
         }
 
         List<Appointment> appointments = latestAppointments.values.toList();
-        appointments.sort((a, b) => a.startTime.compareTo(b.startTime));
 
         return appointments;
       } else {
@@ -787,7 +798,7 @@ class HomePageState extends State<HomePage> {
             // return false; // Placeholder, update as needed
           }
         }).toList();
-        appointments.sort((a, b) => a.startTime.compareTo(b.startTime));
+        // appointments.sort((a, b) => a.startTime.compareTo(b.startTime));
         return appointments;
       } else {
         return [];
@@ -1015,8 +1026,8 @@ class HomePageState extends State<HomePage> {
                                     ),
                                   ),
                                   trailing: Text(formattedTime,
-                                      style:
-                                          const TextStyle(color: Colors.white)),
+                                      style: const TextStyle(
+                                          color: Color(0xFF878493))),
                                   title: Text(chatSenderName,
                                       style:
                                           const TextStyle(color: Colors.white)),
@@ -1183,7 +1194,7 @@ class HomePageState extends State<HomePage> {
                                         width: 10,
                                       ),
                                       Text(
-                                        'Phone Number: ${userProfile.phoneNumber}',
+                                        userProfile.phoneNumber,
                                         style: const TextStyle(
                                           fontSize: 14,
                                           color: Colors.white,

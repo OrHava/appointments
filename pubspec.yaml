@@ -50,6 +50,16 @@ dependencies:
   provider: ^6.1.1
   collection: ^1.17.1
   flutter_launcher_icons: ^0.13.1
+  add_2_calendar: ^2.2.5
+  flutter_rating_bar: ^4.0.1
+  flutter_web_browser: ^0.17.1
+  flutter_sequence_animation: ^4.0.0
+  flutter_local_notifications: ^16.2.0
+  timezone: ^0.9.2
+  workmanager: ^0.5.1
+  geocoding: ^2.1.1
+  firebase_core_web: ^2.10.0
+  fl_chart: ^0.65.0
 
 
 

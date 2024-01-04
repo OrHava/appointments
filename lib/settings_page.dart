@@ -1,8 +1,12 @@
+import 'package:appointments/account_settings_page.dart';
 import 'package:appointments/sign_in_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'about_page.dart';
+import 'block_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -30,7 +34,14 @@ class SettingsPage extends StatelessWidget {
               'Account Settings',
               Icons.account_circle,
               () {
-                // Navigate to account settings page
+                if (context.mounted) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AccountSettingsPage(),
+                    ),
+                  );
+                }
               },
             ),
             _buildSettingsItem(
@@ -41,10 +52,31 @@ class SettingsPage extends StatelessWidget {
               },
             ),
             _buildSettingsItem(
+              'Blocks',
+              Icons.block,
+              () {
+                if (context.mounted) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BlockPage(),
+                    ),
+                  );
+                }
+              },
+            ),
+            _buildSettingsItem(
               'About',
               Icons.info,
               () {
-                // Navigate to about page
+                if (context.mounted) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AboutPage(),
+                    ),
+                  );
+                }
               },
             ),
             _buildSettingsItem(

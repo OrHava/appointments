@@ -168,20 +168,23 @@ class SignUpScreen extends StatelessWidget {
         );
       } else {
         // Redirect the user to the home page for existing users
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) => const HomePage(pageNumber: 0)),
-        );
+        if (context.mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const HomePage(pageNumber: 0)),
+          );
+        }
       }
     } catch (e) {
       // Handle sign-up errors
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+          ),
+        );
+      }
     }
   }
 }
