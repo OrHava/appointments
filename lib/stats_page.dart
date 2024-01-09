@@ -35,7 +35,11 @@ class StatsPageState extends State<StatsPage> {
         backgroundColor: const Color(0xFF161229),
         appBar: AppBar(
           backgroundColor: const Color(0xFF7B86E2),
-          title: const Text('Page Views'),
+          title: const Text('Page Views',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              )),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
@@ -46,14 +50,6 @@ class StatsPageState extends State<StatsPage> {
         body: SingleChildScrollView(
           child: Column(
             children: [
-              const Hero(
-                tag: 'stats_icon',
-                child: Icon(
-                  Icons.insert_chart,
-                  size: 100,
-                  color: Color(0xFF7B86E2),
-                ),
-              ),
               FutureBuilder(
                 future: pageViewsData,
                 builder: (context, snapshot) {
@@ -73,9 +69,23 @@ class StatsPageState extends State<StatsPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Center(
-                            child: Text(
-                              "Current Date: ${DateFormat('dd-MM-yyyy').format(pageViews['date'])}",
-                              style: const TextStyle(color: Colors.white),
+                            child: Card(
+                              elevation: 4,
+                              color: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                  side: const BorderSide(
+                                      color: Color(0xFF7B86E2), width: 2.0)),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  "Current Date: ${DateFormat('dd-MM-yyyy').format(pageViews['date'])}",
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18),
+                                ),
+                              ),
                             ),
                           ),
                           buildPageViewCard(
@@ -128,14 +138,37 @@ class StatsPageState extends State<StatsPage> {
                   } else {
                     PageViewsData pageViewsData = snapshot.data!;
 
-                    // Use the data in your LineChart
+                    // Parse the dates into DateTime objects
+                    List<DateTime> dateObjects =
+                        pageViewsData.dates.map((dateString) {
+                      return DateTime.parse(dateString);
+                    }).toList();
+
+// Create a map to associate each date with its corresponding views
+                    Map<DateTime, int> viewsByDate =
+                        Map.fromIterables(dateObjects, pageViewsData.counts);
+
+// Sort the list of DateTime objects
+                    dateObjects.sort();
+
+// Create a list of views corresponding to the sorted dates
+                    List<int> sortedViews = dateObjects.map((dateTime) {
+                      return viewsByDate[dateTime]!;
+                    }).toList();
+
+// Convert sorted DateTime objects back to strings
+                    List<String> sortedDates = dateObjects.map((dateTime) {
+                      return DateFormat('yyyy-MM-dd').format(dateTime);
+                    }).toList();
+
+// Use the data in your LineChart
                     return Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: SizedBox(
                         height: 300,
                         child: dynamicLineChart(
-                          pageViewsData.counts.reversed.toList(),
-                          pageViewsData.dates.reversed.toList(),
+                          sortedViews.toList(),
+                          sortedDates.toList(),
                         ),
                       ),
                     );
@@ -299,7 +332,11 @@ class StatsPageState extends State<StatsPage> {
               child: Card(
                 elevation: 4,
                 margin: const EdgeInsets.symmetric(vertical: 8),
-                color: const Color(0xFF7B86E2),
+                color: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30.0),
+                  side: const BorderSide(color: Color(0xFF7B86E2), width: 2.0),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(

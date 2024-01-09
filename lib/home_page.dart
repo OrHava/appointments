@@ -82,6 +82,14 @@ class HomePageState extends State<HomePage> {
             color: Color(0xFF7B86E2)), // Set the color for selected icon
         unselectedIconTheme: const IconThemeData(
             color: Colors.grey), // Set the color for unselected icon
+        selectedLabelStyle: const TextStyle(
+          color: Color(0xFF7B86E2), // Set the color for selected label
+        ),
+        unselectedLabelStyle: const TextStyle(
+          color: Colors.grey, // Set the color for unselected label
+        ),
+        selectedItemColor: const Color(0xFF7B86E2),
+        unselectedItemColor: Colors.grey,
       ),
     );
   }
@@ -1250,16 +1258,42 @@ class HomePageState extends State<HomePage> {
                             Positioned(
                               bottom: 30,
                               right: 30,
-                              child: Container(
-                                height: 100,
-                                width: 100,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  image: DecorationImage(
-                                    fit: BoxFit.cover,
-                                    image: NetworkImage(
-                                      userProfile.photoUrl ??
-                                          'https://www.gravatar.com/avatar/00000000000000000000000000000000?s=150&d=mp&r=pg',
+                              child: GestureDetector(
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return Dialog(
+                                        child: Container(
+                                          height:
+                                              300, // Adjust the height as needed
+                                          width:
+                                              300, // Adjust the width as needed
+                                          decoration: BoxDecoration(
+                                            image: DecorationImage(
+                                              fit: BoxFit.cover,
+                                              image: NetworkImage(
+                                                userProfile.photoUrl ??
+                                                    'https://www.gravatar.com/avatar/00000000000000000000000000000000?s=150&d=mp&r=pg',
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                                child: Container(
+                                  height: 100,
+                                  width: 100,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    image: DecorationImage(
+                                      fit: BoxFit.cover,
+                                      image: NetworkImage(
+                                        userProfile.photoUrl ??
+                                            'https://www.gravatar.com/avatar/00000000000000000000000000000000?s=150&d=mp&r=pg',
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1369,7 +1403,13 @@ class SearchResultPage extends StatelessWidget {
       backgroundColor: const Color(0xFF161229),
       appBar: AppBar(
         backgroundColor: const Color(0xFF7B86E2),
-        title: const Text('Search Results'),
+        title: const Text(
+          'Search Results',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
       body: ListView.builder(
         itemCount: searchResults.length,

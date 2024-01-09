@@ -33,8 +33,8 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
   List<String> selectedTimeSlots = [];
   ValueNotifier<List<String>> selectedTimeSlotsNotifier =
       ValueNotifier<List<String>>([]);
-
-  DateTime selectedDate = DateTime.now();
+  ValueNotifier<Service> selectedService = ValueNotifier(Service("", 0.0, ""));
+  ValueNotifier<DateTime> selectedDate = ValueNotifier(DateTime.now());
   String? selectedAppointmentTime;
 
   @override
@@ -48,7 +48,11 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
         backgroundColor: const Color(0xFF161229),
         appBar: AppBar(
           backgroundColor: const Color(0xFF7B86E2),
-          title: const Text('Business Profile'),
+          title: const Text('Business Profile',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              )),
         ),
         body: _buildProfile(widget.businessId, currentUserUid),
       );
@@ -60,7 +64,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
   @override
   void initState() {
     super.initState();
-    selectedDate = DateTime.now();
+    selectedDate = ValueNotifier(DateTime.now());
 
     recordPageView(widget.businessId);
   }
@@ -137,8 +141,8 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
 // Combine selectedDate and cleanedTime into a single DateTime
         DateTime combinedDateTime = DateTime(
           DateTime.now().year,
-          selectedDate.month,
-          selectedDate.day,
+          selectedDate.value.month,
+          selectedDate.value.day,
           hours,
           minutes,
         );
@@ -151,20 +155,24 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
           DateTime endTime = combinedDateTime.add(const Duration(minutes: 30));
 
           Appointment newAppointmentForUser = Appointment(
-              userId: widget.businessId,
-              startTime: startTime,
-              endTime: endTime,
-              cancelled: false,
-              name: businessName,
-              phone: businessPhone);
+            userId: widget.businessId,
+            startTime: startTime,
+            endTime: endTime,
+            cancelled: false,
+            name: businessName,
+            phone: businessPhone,
+            service: selectedService.value,
+          );
 
           Appointment newAppointmentForBusiness = Appointment(
-              userId: user.uid,
-              startTime: startTime,
-              endTime: endTime,
-              cancelled: false,
-              name: widget.userName as String,
-              phone: widget.userPhone as String);
+            userId: user.uid,
+            startTime: startTime,
+            endTime: endTime,
+            cancelled: false,
+            name: widget.userName as String,
+            phone: widget.userPhone as String,
+            service: selectedService.value,
+          );
 
           // Save the new appointment to Realtime Database
           String? commonPushId = FirebaseDatabase.instance.ref().push().key;
@@ -326,6 +334,9 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
             } else {
               // User profile data is available, display it
               UserProfile userProfile = UserProfile.fromJson(snapshot.data!);
+              selectedService = ValueNotifier(userProfile.services.isNotEmpty
+                  ? userProfile.services.first
+                  : Service("", 0.0, ""));
 
               // Check if the current user is blocked
               if (userProfile.blockedUserIds.contains(personalUserId)) {
@@ -393,6 +404,17 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                                           .toStringAsFixed(1),
                                       style: const TextStyle(
                                           fontSize: 14, color: Colors.white),
+                                    ),
+                                    const Expanded(child: SizedBox()),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.report,
+                                        size: 30,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () {
+                                        reportBusiness();
+                                      },
                                     ),
                                   ],
                                 ),
@@ -664,16 +686,42 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                           Positioned(
                             bottom: 30,
                             right: 30,
-                            child: Container(
-                              height: 100,
-                              width: 100,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                image: DecorationImage(
-                                  fit: BoxFit.cover,
-                                  image: NetworkImage(
-                                    userProfile.photoUrl ??
-                                        'https://www.gravatar.com/avatar/00000000000000000000000000000000?s=150&d=mp&r=pg',
+                            child: GestureDetector(
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return Dialog(
+                                      child: Container(
+                                        height:
+                                            300, // Adjust the height as needed
+                                        width:
+                                            300, // Adjust the width as needed
+                                        decoration: BoxDecoration(
+                                          image: DecorationImage(
+                                            fit: BoxFit.cover,
+                                            image: NetworkImage(
+                                              userProfile.photoUrl ??
+                                                  'https://www.gravatar.com/avatar/00000000000000000000000000000000?s=150&d=mp&r=pg',
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                              child: Container(
+                                height: 100,
+                                width: 100,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  image: DecorationImage(
+                                    fit: BoxFit.cover,
+                                    image: NetworkImage(
+                                      userProfile.photoUrl ??
+                                          'https://www.gravatar.com/avatar/00000000000000000000000000000000?s=150&d=mp&r=pg',
+                                    ),
                                   ),
                                 ),
                               ),
@@ -682,13 +730,101 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    _buildBusinessSchedule(
-                        userProfile.slotAllowedAmount,
-                        userProfile.businessSchedule,
-                        userProfile.appointmentsByDate,
-                        userProfile.slotDurationInMinutes),
-                    const SizedBox(height: 16),
+                    Card(
+                      color: const Color(0xFF161229),
+                      elevation: 2.0,
+                      margin: const EdgeInsets.symmetric(vertical: 16.0),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Services',
+                              style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white),
+                            ),
+                            const SizedBox(height: 8),
+                            // Wrap with ValueListenableBuilder to listen for changes
+                            ValueListenableBuilder<Service?>(
+                              valueListenable: selectedService,
+                              builder: (context, selectedServiceValue, _) {
+                                return SizedBox(
+                                  width: double.infinity,
+                                  child: ListView.builder(
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    shrinkWrap: true,
+                                    itemCount: userProfile.services.length,
+                                    itemBuilder: (context, index) {
+                                      Service service =
+                                          userProfile.services[index];
+                                      String currencySymbol = getCurrencySymbol(
+                                          service.paymentType);
+                                      bool isSelected =
+                                          service == selectedServiceValue;
+
+                                      return Card(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(15),
+                                          side: BorderSide(
+                                              color: isSelected
+                                                  ? const Color(0xFF7B86E2)
+                                                  : const Color(0xFF878493),
+                                              width: 2.0),
+                                        ),
+                                        color: const Color(0xFF161229),
+                                        elevation: 8,
+                                        child: ListTile(
+                                          onTap: () {
+                                            // Update the selected service when tapped
+                                            selectedService.value = service;
+                                          },
+                                          trailing: Text(
+                                              '$currencySymbol${service.amount}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: isSelected
+                                                    ? const Color(0xFF7B86E2)
+                                                    : Colors.white,
+                                              )),
+                                          title: Text(
+                                            service.name,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: isSelected
+                                                  ? const Color(0xFF7B86E2)
+                                                  : Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                            if (userProfile.services.isEmpty)
+                              const Text('No services available.'),
+                          ],
+                        ),
+                      ),
+                    ),
+                    ValueListenableBuilder<DateTime>(
+                      valueListenable: selectedDate,
+                      builder: (context, selectedDateValue, _) {
+                        return _buildBusinessSchedule(
+                          userProfile.slotAllowedAmount,
+                          userProfile.businessSchedule,
+                          userProfile.appointmentsByDate,
+                          userProfile.slotDurationInMinutes,
+                        );
+                      },
+                    ),
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: SizedBox(
@@ -742,68 +878,6 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Card(
-                      color: const Color(0xFF161229),
-                      elevation: 2.0,
-                      margin: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Services',
-                              style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white),
-                            ),
-                            const SizedBox(height: 8),
-                            if (userProfile.services.isNotEmpty)
-                              SizedBox(
-                                width: double.infinity,
-                                child: ListView.builder(
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  shrinkWrap: true,
-                                  itemCount: userProfile.services.length,
-                                  itemBuilder: (context, index) {
-                                    Service service =
-                                        userProfile.services[index];
-                                    String currencySymbol =
-                                        getCurrencySymbol(service.paymentType);
-                                    return Card(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(15),
-                                        side: const BorderSide(
-                                            color: Color(0xFF878493),
-                                            width: 2.0),
-                                      ),
-                                      color: const Color(0xFF161229),
-                                      elevation: 8,
-                                      child: ListTile(
-                                        trailing: Text(
-                                            '$currencySymbol${service.amount}',
-                                            style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.white)),
-                                        title: Text(service.name,
-                                            style: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white)),
-
-                                        // You can customize the ListTile as needed
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            if (userProfile.services.isEmpty)
-                              const Text('No services available.'),
-                          ],
-                        ),
-                      ),
-                    ),
                     const Padding(
                       padding: EdgeInsets.all(8.0),
                       child: Row(
@@ -1149,13 +1223,13 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
 // Create a new DateTime object with the updated year and month
     DateTime updatedDate = DateTime(
         newYear,
-        selectedDate.month,
-        selectedDate.day,
-        selectedDate.hour,
-        selectedDate.minute,
-        selectedDate.second,
-        selectedDate.millisecond,
-        selectedDate.microsecond);
+        selectedDate.value.month,
+        selectedDate.value.day,
+        selectedDate.value.hour,
+        selectedDate.value.minute,
+        selectedDate.value.second,
+        selectedDate.value.millisecond,
+        selectedDate.value.microsecond);
 
     Map<String, dynamic> schedule = businessSchedule[getWeekdayString(
         updatedDate.weekday)]!; //there is problem with matching of the days
@@ -1205,6 +1279,12 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
     return dates;
   }
 
+  bool isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+        date1.month == date2.month &&
+        date1.day == date2.day;
+  }
+
   Widget buildDaysRow(Map<String, Map<String, dynamic>> businessSchedule) {
     List<DateTime> dateList = generateDateList();
 
@@ -1217,7 +1297,6 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
         itemCount: dateList.length,
         itemBuilder: (context, index) {
           DateTime date = dateList[index];
-
           String formattedDate = DateFormat('MM/dd').format(date);
 
           return buildDayColumn(formattedDate, date, businessSchedule);
@@ -1226,24 +1305,16 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
     );
   }
 
-  bool isSameDay(DateTime date1, DateTime date2) {
-    return date1.year == date2.year &&
-        date1.month == date2.month &&
-        date1.day == date2.day;
-  }
-
   Widget buildDayColumn(String day, DateTime date,
       Map<String, Map<String, dynamic>> businessSchedule) {
-    bool isSelected = isSameDay(date, selectedDate);
+    bool isSelected = isSameDay(date, selectedDate.value);
     bool isAvailable =
         businessSchedule[getWeekdayString(date.weekday)]?['available'] ?? true;
 
     return GestureDetector(
       onTap: () {
         if (isAvailable) {
-          setState(() {
-            selectedDate = date;
-          });
+          selectedDate.value = DateTime(date.year, date.month, date.day);
         }
       },
       child: Padding(
@@ -1353,7 +1424,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
         future: _getBookedStatusForTimeSlots(
           slotAllowedAmount,
           timeSlots,
-          selectedDate,
+          selectedDate.value,
           businessSchedule,
         ),
         builder: (context, snapshot) {
@@ -1744,5 +1815,83 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
 
   String _formatTimeOfDay(TimeOfDay timeOfDay) {
     return '${timeOfDay.hourOfPeriod}:${timeOfDay.minute.toString().padLeft(2, '0')} ${timeOfDay.period == DayPeriod.am ? 'AM' : 'PM'}';
+  }
+
+  Future<void> reportBusiness() async {
+    String selectedReason = '';
+
+    // List of predefined report reasons
+    List<String> reportReasons = [
+      'Inappropriate content',
+      'Spam',
+      'Fake business',
+      'Other',
+    ];
+
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Report Business'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: reportReasons.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(reportReasons[index]),
+                  onTap: () {
+                    selectedReason = reportReasons[index];
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+
+    // Handle the selected reason and send the report to the backend
+    if (selectedReason.isNotEmpty) {
+      // Send the report to the backend
+      await sendReportToBackend(selectedReason, widget.businessId);
+
+      // Show a confirmation message
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Business reported successfully!'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> sendReportToBackend(
+      String reportReason, String businessId) async {
+    try {
+      final DatabaseReference reportsRef = FirebaseDatabase.instance
+          .ref()
+          .child('reports'); // Create a new node 'reports' in your database
+
+      String? reportId = reportsRef.push().key;
+
+      // Store the report data
+      Map<String, dynamic> reportData = {
+        'reportId': reportId,
+        'businessId': businessId,
+        'reportReason': reportReason,
+        'timestamp': ServerValue.timestamp,
+      };
+
+      // Set the report data to the 'reports' node
+      await reportsRef.child(reportId!).set(reportData);
+    } catch (error) {
+      // ignore: avoid_print
+      print('Error sending report: $error');
+      // Handle the error, e.g., show an error message to the user
+    }
   }
 }

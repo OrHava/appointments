@@ -1,4 +1,5 @@
 import 'package:appointments/account_settings_page.dart';
+import 'package:appointments/notification_page.dart';
 import 'package:appointments/sign_in_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,11 @@ class SettingsPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF161229),
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: const Text('Settings',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            )),
         backgroundColor: const Color(0xFF7B86E2),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -48,7 +53,14 @@ class SettingsPage extends StatelessWidget {
               'Notifications',
               Icons.notifications,
               () {
-                // Navigate to notifications page
+                if (context.mounted) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationPage(),
+                    ),
+                  );
+                }
               },
             ),
             _buildSettingsItem(
@@ -82,8 +94,15 @@ class SettingsPage extends StatelessWidget {
             _buildSettingsItem(
               'Rate the App',
               Icons.star,
-              () {
-                // Navigate to rate the app page
+              () async {
+                const url =
+                    'https://play.google.com/store/apps/details?id=com.orhava.appointments';
+                final Uri uri = Uri.parse(url);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                } else {
+                  throw 'Could not launch $url';
+                }
               },
             ),
             _buildSettingsItem(

@@ -38,7 +38,11 @@ class UserProfilePageState extends State<UserProfilePage> {
         backgroundColor: const Color(0xFF161229),
         appBar: AppBar(
           backgroundColor: const Color(0xFF7B86E2),
-          title: const Text('User Profile'),
+          title: const Text('User Profile',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              )),
         ),
         body: _buildProfile(widget.businessId, currentUserUid),
       );
@@ -350,16 +354,42 @@ class UserProfilePageState extends State<UserProfilePage> {
                           Positioned(
                             bottom: 30,
                             right: 30,
-                            child: Container(
-                              height: 100,
-                              width: 100,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                image: DecorationImage(
-                                  fit: BoxFit.cover,
-                                  image: NetworkImage(
-                                    userProfile.photoUrl ??
-                                        'https://www.gravatar.com/avatar/00000000000000000000000000000000?s=150&d=mp&r=pg',
+                            child: GestureDetector(
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return Dialog(
+                                      child: Container(
+                                        height:
+                                            300, // Adjust the height as needed
+                                        width:
+                                            300, // Adjust the width as needed
+                                        decoration: BoxDecoration(
+                                          image: DecorationImage(
+                                            fit: BoxFit.cover,
+                                            image: NetworkImage(
+                                              userProfile.photoUrl ??
+                                                  'https://www.gravatar.com/avatar/00000000000000000000000000000000?s=150&d=mp&r=pg',
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                              child: Container(
+                                height: 100,
+                                width: 100,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  image: DecorationImage(
+                                    fit: BoxFit.cover,
+                                    image: NetworkImage(
+                                      userProfile.photoUrl ??
+                                          'https://www.gravatar.com/avatar/00000000000000000000000000000000?s=150&d=mp&r=pg',
+                                    ),
                                   ),
                                 ),
                               ),

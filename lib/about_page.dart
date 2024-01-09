@@ -9,7 +9,13 @@ class AboutPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF7B86E2),
-        title: const Text('About us'),
+        title: const Text(
+          'About us',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
       backgroundColor: const Color(0xFF161229),
       body: const SingleChildScrollView(
@@ -31,7 +37,7 @@ class AboutPage extends StatelessWidget {
             Padding(
               padding: EdgeInsets.all(16.0),
               child: Text(
-                'Version 1',
+                'Version 2',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 18.0, color: Colors.white),
               ),

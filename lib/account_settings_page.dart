@@ -15,7 +15,11 @@ class AccountSettingsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF7B86E2),
-        title: const Text('Account Settings'),
+        title: const Text('Account Settings',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            )),
       ),
       backgroundColor: const Color(0xFF161229),
       body: Padding(

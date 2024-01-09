@@ -1,14 +1,20 @@
 import 'dart:io';
 
+import 'package:appointments/about_page.dart';
+import 'package:appointments/account_settings_page.dart';
+import 'package:appointments/earnings_page.dart';
+import 'package:appointments/premium_account_management.dart';
 import 'package:appointments/settings_page.dart';
+import 'package:appointments/sign_in_screen.dart';
 import 'package:appointments/stats_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
-
+import 'package:table_calendar/table_calendar.dart';
 import 'appointments_list.dart';
 import 'chat_page.dart';
 import 'first_time_sign_up_page.dart';
@@ -39,28 +45,375 @@ class HomePageBusinessState extends State<HomePageBusiness> {
   static const String defaultProfileImageAsset = 'images/background_image.jpg';
 
   bool isScheduleExpanded = false;
-
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  User? user = FirebaseAuth.instance.currentUser;
+  final TextEditingController _feedbackController = TextEditingController();
 // Declare the class-level variable for all chats
   List<Map<dynamic, dynamic>> allChats = [];
 // Declare the class-level variable for displayed chats
   List<Map<dynamic, dynamic>> displayedChats = [];
   TextEditingController searchControllerForChats =
       TextEditingController(); //new1
+  DateTime? _selectedDate;
+  final List<String> pageTitles = ['Home', 'Appointments', 'Chat', 'Profile'];
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  CalendarFormat _calendarFormat = CalendarFormat.week;
 
+  late Map<DateTime, List<Appointment>> appointmentEvents =
+      {}; // Initialize here;
   @override
   void initState() {
     super.initState();
     // Set the initial page based on the provided pageNumber
     _currentIndex = widget.pageNumber;
+    _selectedDate = DateTime.utc(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+    _fetchAppointments();
+  }
+
+  void _fetchAppointments() {
+    Future.wait([
+      getAppointmentsForUser(user!.uid, AppointmentFilter.Upcoming),
+      getAppointmentsForUser(user!.uid, AppointmentFilter.Completed),
+    ]).then((List<List<Appointment>> results) {
+      final upcomingAppointments = results[0];
+      final completedAppointments = results[1];
+
+      final upcomingAppointmentsEvents =
+          getAppointmeantEvents(upcomingAppointments);
+      final completedAppointmentsEvents =
+          getAppointmeantEvents(completedAppointments);
+
+      final combinedEvents = {
+        ...upcomingAppointmentsEvents,
+        ...completedAppointmentsEvents,
+      };
+
+      setState(() {
+        appointmentEvents = combinedEvents;
+      });
+    }).catchError((error) {
+      // Handle the error appropriately, e.g., show an error message
+      // ignore: avoid_print
+      print('Error fetching appointments: $error');
+    });
+  }
+
+  Map<DateTime, List<Appointment>> getAppointmeantEvents(
+      List<Appointment> appointments) {
+    final appointmentEvents = <DateTime, List<Appointment>>{};
+
+    for (var appointment in appointments) {
+      // Use UTC date for consistency
+      final date = DateTime.utc(appointment.startTime.year,
+          appointment.startTime.month, appointment.startTime.day);
+
+      if (appointmentEvents.containsKey(date)) {
+        appointmentEvents[date]!.add(appointment);
+      } else {
+        appointmentEvents[date] = [appointment];
+      }
+    }
+
+    return appointmentEvents;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.only(top: 20.0),
-        child: _getBody(),
+      key: _scaffoldKey,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF7B86E2),
+        title: Text(
+          pageTitles[_currentIndex],
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        // Add an IconButton to open the drawer
+        leading: Builder(
+          builder: (BuildContext context) {
+            return IconButton(
+              icon: const Icon(
+                Icons.menu,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                // Open the drawer on button click
+                _scaffoldKey.currentState?.openDrawer();
+              },
+            );
+          },
+        ),
+        actions: [
+          _currentIndex == 0
+              ? IconButton(
+                  icon: const Icon(
+                    Icons.today,
+                    color: Colors.white,
+                  ),
+                  onPressed: () {
+                    // Handle logic for returning to today
+                    setState(() {
+                      _selectedDate = DateTime.now();
+                    });
+                  },
+                )
+              : Container(),
+          _currentIndex == 0
+              ? PopupMenuButton<String>(
+                  icon: const Icon(
+                    Icons.tune,
+                    color: Colors.white,
+                  ),
+                  onSelected: (String result) {
+                    setState(() {
+                      if (result == 'month') {
+                        _calendarFormat = CalendarFormat.month;
+                      } else if (result == 'twoWeeks') {
+                        _calendarFormat = CalendarFormat.twoWeeks;
+                      } else if (result == 'week') {
+                        _calendarFormat = CalendarFormat.week;
+                      }
+                    });
+                  },
+                  itemBuilder: (BuildContext context) =>
+                      <PopupMenuEntry<String>>[
+                    const PopupMenuItem<String>(
+                      value: 'month',
+                      child: Text('Month'),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'twoWeeks',
+                      child: Text('Two Weeks'),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'week',
+                      child: Text('Week'),
+                    ),
+                  ],
+                )
+              : Container(),
+        ],
       ),
+      // Add a Drawer widget to the Scaffold
+      drawer: Drawer(
+        backgroundColor: const Color(0xFF161229),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 40.0),
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              ListTile(
+                title: const Text(
+                  'Appointments Manager',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(15.0),
+                  child: Image.asset(
+                    'images/icon_app_cute_bigger.png',
+                    width: 50.0,
+                    height: 50.0,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                onTap: () {
+                  if (context.mounted) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const AboutPage()),
+                    );
+                  }
+                },
+              ),
+              const Divider(
+                color: Color(0xFF878493),
+              ),
+              ListTile(
+                title: const Text(
+                  'Reports',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                leading: const Icon(
+                  Icons.insert_chart,
+                  color: Color(0xFF878493),
+                ),
+                onTap: () {
+                  if (context.mounted) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const StatsPage(),
+                      ),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                title: const Text(
+                  'Earnings',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                leading: const Icon(
+                  Icons.money,
+                  color: Color(0xFF878493),
+                ),
+                onTap: () {
+                  if (context.mounted) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EarningsPage(
+                          userId: user!.uid,
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                title: const Text(
+                  'Customization',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                leading:
+                    const Icon(Icons.contact_page, color: Color(0xFF878493)),
+                onTap: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const FirstTimeSignUpPage()),
+                  );
+                },
+              ),
+              const Divider(
+                color: Color(0xFF878493),
+              ),
+              ListTile(
+                title: Text(
+                  user!.displayName ?? '',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: Text(
+                  user!.email ?? '',
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                leading: const Icon(
+                  FontAwesomeIcons.person,
+                  color: Color(0xFF878493),
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => AccountSettingsPage()),
+                  );
+                },
+              ),
+              ListTile(
+                title: const Text(
+                  'Settings',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                leading: const Icon(
+                  Icons.settings,
+                  color: Color(0xFF878493),
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const SettingsPage()),
+                  );
+                },
+              ),
+              ListTile(
+                title: const Text(
+                  'Premium Account',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                leading: const Icon(
+                  Icons.store,
+                  color: Color(0xFF878493),
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const PremiumAccountManagement()),
+                  );
+                },
+              ),
+              ListTile(
+                title: const Text(
+                  'Send feedback',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                leading: const Icon(
+                  Icons.send,
+                  color: Color(0xFF878493),
+                ),
+                onTap: () {
+                  _showFeedbackForm(context);
+                },
+              ),
+              ListTile(
+                title: const Text(
+                  'Log out',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                leading: const Icon(
+                  Icons.logout,
+                  color: Color(0xFF878493),
+                ),
+                onTap: () async {
+                  try {
+                    await FirebaseAuth.instance.signOut();
+                    await GoogleSignIn().signOut();
+
+                    if (context.mounted) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SignInScreen(),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    // ignore: avoid_print
+                    print("Error during sign out: $e");
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+
+      body: _getBody(),
+
       backgroundColor: const Color(0xFF161229),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -91,6 +444,14 @@ class HomePageBusinessState extends State<HomePageBusiness> {
             color: Color(0xFF7B86E2)), // Set the color for selected icon
         unselectedIconTheme: const IconThemeData(
             color: Colors.grey), // Set the color for unselected icon
+        selectedLabelStyle: const TextStyle(
+          color: Color(0xFF7B86E2), // Set the color for selected label
+        ),
+        unselectedLabelStyle: const TextStyle(
+          color: Colors.grey, // Set the color for unselected label
+        ),
+        selectedItemColor: const Color(0xFF7B86E2),
+        unselectedItemColor: Colors.grey,
       ),
     );
   }
@@ -226,6 +587,7 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                   'startTime': entry.value['startTime'],
                   'endTime': entry.value['endTime'],
                   'pushId': entry.value['pushId'],
+                  'service': entry.value['service'],
                 }))
             .where((appointment) {
           DateTime now = DateTime.now();
@@ -547,440 +909,176 @@ class HomePageBusinessState extends State<HomePageBusiness> {
     final User? user = auth.currentUser;
 
     if (user != null) {
-      return Container(
-        color: const Color(0xFF161229),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    height: 120,
-                    decoration: BoxDecoration(
-                      gradient: const RadialGradient(
-                        colors: [Color(0xFF7B86E2), Color(0xFFA796D1)],
-                        center: Alignment.center,
-                        radius: 1.5,
-                      ),
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(40),
-                        bottomRight: Radius.circular(40),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.6),
-                          spreadRadius: 10,
-                          blurRadius: 30,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Column(
-                    children: [
-                      SizedBox(height: 40),
-                      Text(
-                        'Welcome to Home Business!',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 2.0,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ],
+      return Column(
+        children: [
+          TableCalendar(
+            availableCalendarFormats: const {
+              CalendarFormat.week: 'Week',
+              CalendarFormat.month: 'Month',
+              CalendarFormat.twoWeeks: 'TwoWeeks',
+            },
+            firstDay: DateTime.utc(2010, 10, 16),
+            selectedDayPredicate: (day) => isSameDay(day, _selectedDate),
+            lastDay: DateTime.utc(2030, 3, 14),
+            headerStyle: const HeaderStyle(
+              leftChevronIcon: Icon(
+                Icons.arrow_back_ios,
+                color: Colors.white, // Change this to the color you want
               ),
-              const SizedBox(height: 40),
-              const Text(
-                'Upcoming Appointments',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 2.0,
-                ),
-                textAlign: TextAlign.center,
+              titleTextStyle: TextStyle(
+                color: Colors.white, // Change this to the color you want
+                fontSize: 20, // Adjust the font size if needed
+                fontWeight: FontWeight.bold, // Adjust the font weight if needed
               ),
-              const SizedBox(height: 40),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 200),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Expanded(
-                      child: FutureBuilder<List<Appointment>>(
-                        future: getAppointmentsForUser(
-                          FirebaseAuth.instance.currentUser?.uid ?? '',
-                          AppointmentFilter.Upcoming,
-                        ),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Center(
-                                child: CircularProgressIndicator());
-                          } else if (snapshot.hasError) {
-                            return const Center(
-                              child: Text(
-                                  'Uh-oh! The cosmic planner encountered a supernova.'),
-                            );
-                          } else {
-                            List<Appointment> appointments =
-                                snapshot.data ?? [];
-                            int upcomingAppointmentsCount = appointments.length;
+              rightChevronIcon: Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.white, // Change this to the color you want
+              ),
+              // ... other header style properties ...
+            ),
+            calendarStyle: const CalendarStyle(
+              defaultTextStyle: TextStyle(color: Colors.white),
+              selectedDecoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFF878493), // Change this to the color you want
+              ),
+              weekendTextStyle:
+                  TextStyle(color: Colors.white), // Set the weekend days color
+            ),
+            focusedDay: _selectedDate ?? DateTime.now(),
+            onDaySelected: (selectedDate, focusedDate) {
+              setState(() {
+                _selectedDate = selectedDate;
+              });
+            },
+            onPageChanged: (focusedDate) {
+              setState(() {
+                _selectedDate = focusedDate;
+              });
+            },
+            calendarFormat: _calendarFormat,
+            eventLoader: (date) => appointmentEvents[date] ?? [],
+          ),
+          Expanded(
+            child: GestureDetector(
+              onHorizontalDragEnd: (details) {
+                if (details.primaryVelocity! > 0) {
+                  // Swiped right
+                  setState(() {
+                    _selectedDate =
+                        _selectedDate!.subtract(const Duration(days: 1));
+                  });
+                } else if (details.primaryVelocity! < 0) {
+                  // Swiped left
+                  setState(() {
+                    _selectedDate = _selectedDate!.add(const Duration(days: 1));
+                  });
+                }
+              },
+              child: (appointmentEvents[_selectedDate]?.isEmpty ?? true)
+                  ? const Center(
+                      child: Image(
+                        fit: BoxFit.contain,
+                        image:
+                            AssetImage('images/no_upcoming_appointments.png'),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: appointmentEvents[_selectedDate]!.length,
+                      itemBuilder: (context, index) {
+                        final List<Appointment> appointmentsForDate =
+                            appointmentEvents[_selectedDate] ?? [];
 
-                            if (appointments.isEmpty) {
-                              return const Center(
-                                child: Image(
-                                  fit: BoxFit.contain,
-                                  image: AssetImage(
-                                      'images/no_upcoming_appointments.png'),
-                                ),
-                              );
-                            }
-                            appointments.sort(
-                                (a, b) => a.startTime.compareTo(b.startTime));
+                        // Sort appointments by start time
+                        appointmentsForDate
+                            .sort((a, b) => a.startTime.compareTo(b.startTime));
 
-                            return Column(
+                        final Appointment appointment =
+                            appointmentsForDate[index];
+                        return Card(
+                          elevation: 5,
+                          margin: const EdgeInsets.all(8.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15.0),
+                            side: const BorderSide(
+                                color: Color(0xFF7B86E2), width: 2.0),
+                          ),
+                          color: Colors.transparent,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Center(
-                                  child: Text(
-                                    'Upcoming Appointments Count: $upcomingAppointmentsCount',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Color(0xFF878493),
+                                // Left side for time range
+                                Column(
+                                  children: [
+                                    Text(
+                                      DateFormat('HH:mm')
+                                          .format(appointment.startTime),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
-                                    textAlign: TextAlign.center,
-                                  ),
+                                    Container(
+                                      width: 2.0, // Adjust the width as needed
+                                      height:
+                                          50.0, // Adjust the height as needed
+                                      color: Colors.white,
+                                    ),
+                                    Text(
+                                      DateFormat('HH:mm')
+                                          .format(appointment.endTime),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 10),
-                                SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment
-                                        .start, // Adjust as needed
-
+                                const SizedBox(width: 16), // Add spacing
+                                Expanded(
+                                  // Right side for appointment details
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      for (int i = 0;
-                                          i < appointments.length;
-                                          i++)
-                                        Container(
-                                          width: MediaQuery.of(context)
-                                              .size
-                                              .width, // Set a width constraint
-
-                                          margin: const EdgeInsets.symmetric(
-                                              horizontal: 10),
-                                          child: Column(
-                                            children: [
-                                              Container(
-                                                margin:
-                                                    const EdgeInsets.symmetric(
-                                                  vertical: 10,
-                                                  horizontal: 30,
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    Stack(
-                                                      children: [
-                                                        Container(
-                                                          width: 70,
-                                                          height: 30,
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: const Color(
-                                                                0xFF7B86E2),
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        8),
-                                                          ),
-                                                        ),
-                                                        const Positioned(
-                                                          top: 5,
-                                                          left: 5,
-                                                          child: Icon(
-                                                            Icons.date_range,
-                                                            color: Colors.white,
-                                                            size: 16,
-                                                          ),
-                                                        ),
-                                                        Positioned(
-                                                          top: 5,
-                                                          left: 25,
-                                                          child: Text(
-                                                            DateFormat('MMM d')
-                                                                .format(
-                                                              appointments[i]
-                                                                  .startTime,
-                                                            ),
-                                                            style:
-                                                                const TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    const SizedBox(width: 20),
-                                                    Expanded(
-                                                      child: Card(
-                                                        shape:
-                                                            RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(15),
-                                                        ),
-                                                        color: const Color(
-                                                            0xFF7B86E2),
-                                                        elevation: 8,
-                                                        child: ListTile(
-                                                          contentPadding:
-                                                              const EdgeInsets
-                                                                  .all(20),
-                                                          title: Text(
-                                                            appointments[i]
-                                                                .name,
-                                                            style:
-                                                                const TextStyle(
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              color:
-                                                                  Colors.white,
-                                                              fontSize: 18,
-                                                            ),
-                                                          ),
-                                                          subtitle: Column(
-                                                            crossAxisAlignment:
-                                                                CrossAxisAlignment
-                                                                    .start,
-                                                            children: [
-                                                              Container(
-                                                                height: 5,
-                                                              ),
-                                                              Row(
-                                                                children: [
-                                                                  const Icon(
-                                                                    Icons.phone,
-                                                                    color: Colors
-                                                                        .white,
-                                                                    size: 16,
-                                                                  ),
-                                                                  Container(
-                                                                    width: 5,
-                                                                  ),
-                                                                  Text(
-                                                                    appointments[
-                                                                            i]
-                                                                        .phone,
-                                                                    style:
-                                                                        const TextStyle(
-                                                                      color: Colors
-                                                                          .white,
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                              const SizedBox(
-                                                                  height: 8),
-                                                              Row(
-                                                                mainAxisAlignment:
-                                                                    MainAxisAlignment
-                                                                        .start,
-                                                                children: [
-                                                                  const Icon(
-                                                                    Icons
-                                                                        .access_time,
-                                                                    color: Colors
-                                                                        .white,
-                                                                    size: 16,
-                                                                  ),
-                                                                  Container(
-                                                                    width: 10,
-                                                                  ),
-                                                                  Text(
-                                                                    DateFormat(
-                                                                            'HH:mm')
-                                                                        .format(
-                                                                            appointments[i].startTime),
-                                                                    style:
-                                                                        const TextStyle(
-                                                                      color: Colors
-                                                                          .white,
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            ],
-                                                          ),
-                                                          onTap: () {
-                                                            // print(appointments[i]
-                                                            //     .startTime
-                                                            //     .toString());
-                                                          },
-                                                        ),
-                                                      ),
-                                                    ),
-
-                                                    const SizedBox(width: 10),
-                                                    // Vertical timeline line
-                                                    Column(
-                                                      children: [
-                                                        Container(
-                                                          width: 2,
-                                                          height:
-                                                              50, // Adjust the height as needed
-                                                          color: Colors.white,
-                                                        ),
-                                                        Padding(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .all(3.0),
-                                                          child: _getTimelineIcon(
-                                                              appointments[i]
-                                                                  .startTime),
-                                                        ),
-                                                        Container(
-                                                          width: 2,
-                                                          height:
-                                                              50, // Adjust the height as needed
-                                                          color: Colors.white,
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                                      Text(
+                                        'Name: ${appointment.name}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
                                         ),
+                                      ),
+                                      const SizedBox(height: 8), // Add spacing
+                                      Text(
+                                        'Phone: ${appointment.phone}\n',
+                                        style: const TextStyle(
+                                            color: Colors.white),
+                                      ),
+
+                                      Text(
+                                        '${appointment.service.name} - ${getCurrencySymbol(appointment.service.paymentType)}${appointment.service.amount}',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.white,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
                               ],
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 40),
-              const Text(
-                'Analytics',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 2.0,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 10),
-              const Center(
-                child: Text(
-                  'Watch how many view your business Page',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF878493),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  InkWell(
-                    onTap: () {
-                      if (context.mounted) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const StatsPage(),
+                            ),
                           ),
                         );
-                      }
-                    },
-                    child: Container(
-                      width: 200,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF7B86E2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Hero(
-                            tag: 'stats_icon',
-                            child: Icon(
-                              Icons.insert_chart,
-                              size: 30,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Stats',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
+                      },
                     ),
-                  )
-                ],
-              ),
-              const SizedBox(height: 40),
-            ],
+            ),
           ),
-        ),
+        ],
       );
     } else {
       return Container();
-    }
-  }
-
-  Widget _getTimelineIcon(DateTime startTime) {
-    // Determine the time of day (morning, afternoon, evening) based on the appointment time
-    int hour = startTime.hour;
-    if (hour < 12) {
-      // Morning
-      return const Icon(
-        Icons.wb_sunny,
-        color: Colors.white,
-        size: 16,
-      );
-    } else if (hour < 17) {
-      // Afternoon
-      return const Icon(
-        Icons.brightness_5,
-        color: Colors.white,
-        size: 16,
-      );
-    } else {
-      // Evening
-      return const Icon(
-        Icons.brightness_3,
-        color: Colors.white,
-        size: 16,
-      );
     }
   }
 
@@ -1017,8 +1115,6 @@ class HomePageBusinessState extends State<HomePageBusiness> {
 
                 return Center(
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Container(
                         height: 200,
@@ -1365,16 +1461,42 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                             Positioned(
                               bottom: 30,
                               right: 30,
-                              child: Container(
-                                height: 100,
-                                width: 100,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  image: DecorationImage(
-                                    fit: BoxFit.cover,
-                                    image: NetworkImage(
-                                      userProfile.photoUrl ??
-                                          'https://www.gravatar.com/avatar/00000000000000000000000000000000?s=150&d=mp&r=pg',
+                              child: GestureDetector(
+                                onTap: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return Dialog(
+                                        child: Container(
+                                          height:
+                                              300, // Adjust the height as needed
+                                          width:
+                                              300, // Adjust the width as needed
+                                          decoration: BoxDecoration(
+                                            image: DecorationImage(
+                                              fit: BoxFit.cover,
+                                              image: NetworkImage(
+                                                userProfile.photoUrl ??
+                                                    'https://www.gravatar.com/avatar/00000000000000000000000000000000?s=150&d=mp&r=pg',
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                                child: Container(
+                                  height: 100,
+                                  width: 100,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    image: DecorationImage(
+                                      fit: BoxFit.cover,
+                                      image: NetworkImage(
+                                        userProfile.photoUrl ??
+                                            'https://www.gravatar.com/avatar/00000000000000000000000000000000?s=150&d=mp&r=pg',
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1783,6 +1905,86 @@ class HomePageBusinessState extends State<HomePageBusiness> {
       // Handle other cases if needed
       return const AssetImage(defaultProfileImageAsset);
     }
+  }
+
+  void _showFeedbackForm(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return ClipRect(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: AlertDialog(
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Provide Feedback & Support',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _feedbackController,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        labelText: 'Your Feedback',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF7B86E2)),
+                      onPressed: () {
+                        _sendFeedback(context);
+                      },
+                      child: const Text('Send Feedback'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _sendFeedback(BuildContext context) {
+    String feedbackText = _feedbackController.text.trim();
+
+    // Get the current user's ID
+    String currentUserUid = _auth.currentUser!.uid;
+
+    // Reference to the feedback node in the database
+    DatabaseReference feedbackRef =
+        FirebaseDatabase.instance.ref().child('feedback');
+
+    // Generate a unique key for each feedback entry
+    String feedbackKey = feedbackRef.push().key!;
+
+    // Create a map to represent the feedback entry
+    Map<String, dynamic> feedbackData = {
+      'userId': currentUserUid,
+      'text': feedbackText,
+      'timestamp':
+          ServerValue.timestamp, // Use server timestamp for accurate timing
+    };
+
+    // Update the database with the feedback
+    feedbackRef.child(feedbackKey).set(feedbackData);
+
+    // Close the feedback form
+    Navigator.pop(context);
+    // Show a SnackBar to indicate successful feedback submission
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Feedback sent successfully!'),
+        duration: Duration(seconds: 4), // You can adjust the duration as needed
+      ),
+    );
   }
 
   Future<void> launchWazeRoute(double lat, double lng) async {

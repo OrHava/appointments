@@ -123,7 +123,11 @@ class BlockPageState extends State<BlockPage> {
       String currentUserUid = user.uid;
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Blocked Users'),
+          title: const Text('Blocked Users',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              )),
           backgroundColor: const Color(0xFF7B86E2), // Set theme color
         ),
         body: Container(

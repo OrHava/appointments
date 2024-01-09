@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 import 'first_time_sign_up_page.dart';
 import 'home_page.dart';
@@ -21,23 +22,29 @@ void callbackDispatcher() {
     final String nextExerciseName = inputData?['nextExerciseName'];
     LocalNotifications.initialize(flutterLocalNotificationsPlugin);
     LocalNotifications.showNotification(
-        title: "Workout",
+        title: "Upcoming Appointmeant",
         body: nextExerciseName,
         flutterLocalNotificationsPlugin: flutterLocalNotificationsPlugin);
     return Future.value(true);
   });
 }
 
-void startBackgroundTask(int timerDurationInSeconds, String nextExerciseName) {
-  // Calculate the delay time based on the timer duration
-  final delayMilliseconds = timerDurationInSeconds * 1000;
-  // print('Background task Start');
-  Workmanager().registerOneOffTask(
-    'notificationTask', // Task name
-    'simpleTask', // Task tag
-    initialDelay: Duration(milliseconds: delayMilliseconds),
-    inputData: {'nextExerciseName': nextExerciseName},
-  );
+Future<void> startBackgroundTask(
+    int timerDurationInSeconds, String nextExerciseName) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  bool isNotificationEnabled = prefs.getBool('notificationEnabled') ?? true;
+
+  if (isNotificationEnabled) {
+    // Calculate the delay time based on the timer duration
+    final delayMilliseconds = timerDurationInSeconds * 1000;
+    // print('Background task Start');
+    Workmanager().registerOneOffTask(
+      'notificationTask', // Task name
+      'simpleTask', // Task tag
+      initialDelay: Duration(milliseconds: delayMilliseconds),
+      inputData: {'nextExerciseName': nextExerciseName},
+    );
+  }
 }
 
 Future<void> initializeBackgroundTasks() async {

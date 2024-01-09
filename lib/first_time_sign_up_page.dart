@@ -1,6 +1,9 @@
+// ignore_for_file: unused_import
+
 import 'dart:collection';
 
 import 'package:appointments/home_page.dart';
+import 'package:appointments/premium_account_management.dart';
 import 'package:appointments/sign_in_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,6 +11,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'dart:io';
 import 'helpers.dart';
 import 'home_page_business.dart';
@@ -234,11 +238,11 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
   final StreamController<double> _progressController =
       StreamController<double>();
   Stream<double> get uploadProgressStream => _progressController.stream;
+  bool hasValidSubscription = false;
 
   @override
   void initState() {
     super.initState();
-
     // Fetch user profile data when the page is created
     _loadUserProfile();
   }
@@ -246,6 +250,7 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
   @override
   void dispose() {
     _progressController.close();
+
     super.dispose();
   }
 
@@ -296,6 +301,44 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
       "closing": const TimeOfDay(hour: 19, minute: 0),
     },
   });
+
+  Future<bool> checkSubscriptionStatus() async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    if (user != null) {
+      String userId = user.uid;
+
+      // Reference to the Firebase database
+      final DatabaseReference databaseReference =
+          FirebaseDatabase.instance.ref();
+
+      // Query the subscriptions node for the user's subscriptions
+      DatabaseEvent databaseEvent = await databaseReference
+          .child('subscriptions')
+          .orderByChild('userId')
+          .equalTo(userId)
+          .once();
+
+      Map<dynamic, dynamic>? data =
+          databaseEvent.snapshot.value as Map<dynamic, dynamic>?;
+
+      // Check if there are any subscriptions for the user
+      if (data != null) {
+        // Iterate through subscriptions and check if any are active
+        for (var entry in data.values) {
+          Map<dynamic, dynamic> subscriptionData = entry;
+          // You can add more checks here based on your subscription data
+          if (subscriptionData['productId'] == 'business_user_sub') {
+            // User has an active subscription
+            return true;
+          }
+        }
+      }
+    }
+
+    // User does not have an active subscription
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -373,9 +416,45 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
                           _buildRoleButton(
                             icon: FontAwesomeIcons.store,
                             label: 'Business',
-                            onPressed: () {
+                            onPressed: () async {
+                              hasValidSubscription =
+                                  await checkSubscriptionStatus();
                               setState(() {
-                                userType = "business";
+                                if (hasValidSubscription) {
+                                  // User has a valid subscription, set the userType to "business"
+                                  userType = "business";
+                                } else {
+                                  // User does not have a valid subscription, handle accordingly
+                                  // For example, show a message or prompt the user to subscribe
+
+                                  if (context.mounted) {
+                                    showDialog(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return AlertDialog(
+                                          title: const Text(
+                                              "Subscription Required"),
+                                          content: const Text(
+                                              "To access the Business role, please subscribe."),
+                                          actions: [
+                                            IconButton(
+                                              onPressed: () {
+                                                Navigator.pop(context);
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          const PremiumAccountManagement()),
+                                                );
+                                              },
+                                              icon: const Icon(Icons.store),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                  }
+                                }
                               });
                             },
                           ),

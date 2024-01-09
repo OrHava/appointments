@@ -42,6 +42,7 @@ class Appointment {
   final DateTime startTime;
   final DateTime endTime;
   String? pushId;
+  final Service service; // Include a Service property
 
   Appointment({
     required this.userId,
@@ -50,10 +51,11 @@ class Appointment {
     required this.cancelled,
     required this.startTime,
     required this.endTime,
+    required this.service,
     this.pushId,
   });
 
-  factory Appointment.fromJson(Map<String, dynamic> json) {
+  factory Appointment.fromJson(Map<dynamic, dynamic> json) {
     return Appointment(
       userId: json['userId'],
       name: json['name'],
@@ -62,7 +64,20 @@ class Appointment {
       pushId: json['pushId'],
       startTime: DateTime.parse(json['startTime']),
       endTime: DateTime.parse(json['endTime']),
+      service: json['service'] != null
+          ? _parseService(json['service'])
+          : Service('', 0, ''),
     );
+  }
+
+  static Service _parseService(dynamic serviceData) {
+    if (serviceData is Map<dynamic, dynamic>) {
+      return Service.fromJson(serviceData);
+    } else {
+      // Handle the case where the service data is not in the expected format
+      // You might want to log an error or return a default Service instance
+      return Service('', 0, '');
+    }
   }
 
   Map<String, dynamic> toJson() {
@@ -74,6 +89,7 @@ class Appointment {
       'startTime': startTime.toIso8601String(),
       'endTime': endTime.toIso8601String(),
       'pushId': pushId,
+      'service': service.toJson(), // Serialize the 'service' property
     };
   }
 }
@@ -86,7 +102,7 @@ class Service {
   Service(this.name, this.amount, this.paymentType);
 
   // Convert Service object to JSON format
-  Map<String, dynamic> toJson() {
+  Map<dynamic, dynamic> toJson() {
     return {
       'name': name,
       'amount': amount,
@@ -95,7 +111,7 @@ class Service {
   }
 
   // Create a Service object from JSON data
-  factory Service.fromJson(Map<String, dynamic> json) {
+  factory Service.fromJson(Map<dynamic, dynamic> json) {
     return Service(
       json['name'] ?? "",
       (json['amount'] ?? 0).toDouble(),
