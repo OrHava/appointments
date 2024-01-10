@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:appointments/about_page.dart';
 import 'package:appointments/account_settings_page.dart';
 import 'package:appointments/earnings_page.dart';
+import 'package:appointments/help_center_page.dart';
 import 'package:appointments/premium_account_management.dart';
 import 'package:appointments/settings_page.dart';
 import 'package:appointments/sign_in_screen.dart';
@@ -15,6 +16,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:table_calendar/table_calendar.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'appointments_list.dart';
 import 'chat_page.dart';
 import 'first_time_sign_up_page.dart';
@@ -376,6 +378,23 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                 ),
                 onTap: () {
                   _showFeedbackForm(context);
+                },
+              ),
+              ListTile(
+                title: const Text(
+                  'Help Center',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                leading: const Icon(
+                  Icons.help_center,
+                  color: Color(0xFF878493),
+                ),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => HelpCenterPage()),
+                  );
                 },
               ),
               ListTile(
@@ -1119,9 +1138,14 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                       Container(
                         height: 200,
                         width: double.infinity,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF7B86E2),
-                          borderRadius: BorderRadius.only(
+                        decoration: BoxDecoration(
+                          color: userProfile.primaryColor.isNotEmpty
+                              ? Color(int.parse(
+                                  userProfile.primaryColor.substring(2),
+                                  radix: 16))
+                              : const Color(
+                                  0xFF7B86E2), // Default color if primaryColor is not available
+                          borderRadius: const BorderRadius.only(
                             bottomLeft: Radius.circular(10),
                             bottomRight: Radius.circular(100),
                           ),
@@ -1650,6 +1674,101 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                         ),
                       ),
                       const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                              onPressed: () async {
+                                if (userProfile.facebookLink.isNotEmpty) {
+                                  var url = userProfile.facebookLink;
+                                  final Uri uri = Uri.parse(url);
+                                  if (await canLaunchUrl(uri)) {
+                                    await launchUrl(uri);
+                                  } else {
+                                    throw 'Could not launch $url';
+                                  }
+                                } else {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("There is no link yet."),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              // ignore: prefer_const_constructors
+                              icon: Icon(
+                                FontAwesomeIcons.facebook,
+                                size: 50,
+                                color: Colors.blue,
+                              )
+
+                              // Wrap Icons.facebook with Icon widget
+                              ),
+                          Container(
+                            width: 5,
+                          ),
+                          IconButton(
+                            onPressed: () async {
+                              if (userProfile.instagramLink.isNotEmpty) {
+                                var url = userProfile.instagramLink;
+                                final Uri uri = Uri.parse(url);
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri);
+                                } else {
+                                  throw 'Could not launch $url';
+                                }
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("There is no link yet."),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            // ignore: prefer_const_constructors
+                            icon: Icon(
+                              FontAwesomeIcons.instagram,
+                              size: 50, // Adjust the icon size
+                              color: Colors.purple, // Set a suitable color
+                            ), // Wrap Icons.facebook with Icon widget
+                          ),
+                          Container(
+                            width: 5,
+                          ),
+                          IconButton(
+                            onPressed: () async {
+                              if (userProfile.websiteLink.isNotEmpty) {
+                                var url = userProfile.websiteLink;
+                                final Uri uri = Uri.parse(url);
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri);
+                                } else {
+                                  throw 'Could not launch $url';
+                                }
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("There is no link yet."),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            // ignore: prefer_const_constructors
+                            icon: Icon(
+                              Icons.web,
+                              size: 50,
+                              color: Colors.teal,
+                            ), // Wrap Icons.facebook with Icon widget
+                          )
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                     ],
                   ),
                 );

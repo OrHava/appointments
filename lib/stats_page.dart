@@ -1,3 +1,4 @@
+import 'package:appointments/helpers.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -35,7 +36,7 @@ class StatsPageState extends State<StatsPage> {
         backgroundColor: const Color(0xFF161229),
         appBar: AppBar(
           backgroundColor: const Color(0xFF7B86E2),
-          title: const Text('Page Views',
+          title: const Text('Reports',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -50,6 +51,219 @@ class StatsPageState extends State<StatsPage> {
         body: SingleChildScrollView(
           child: Column(
             children: [
+              Container(
+                height: 25,
+              ),
+              FutureBuilder<List<Appointment>>(
+                future: getAppointmentsForUser(currentUserUid),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                        child: CircularProgressIndicator(
+                      color: Colors.amber,
+                    ));
+                  } else if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  } else if (!snapshot.hasData || snapshot.data == null) {
+                    return const Text('User profile not found');
+                  } else {
+                    // User profile data is available, display it
+                    List<Appointment> userAppointments =
+                        snapshot.data as List<Appointment>;
+
+                    // Get today's date
+                    DateTime now = DateTime.now();
+
+                    // Filter appointments for today
+                    List<Appointment> appointmentsToday = userAppointments
+                        .where((appointment) =>
+                            appointment.startTime.year == now.year &&
+                            appointment.startTime.month == now.month &&
+                            appointment.startTime.day == now.day)
+                        .toList();
+
+                    // Filter appointments for today
+                    List<Appointment> appointmentsMonth = userAppointments
+                        .where((appointment) =>
+                            appointment.startTime.year == now.year &&
+                            appointment.startTime.month == now.month)
+                        .toList();
+
+                    // Filter appointments for today
+                    List<Appointment> appointmentsYear = userAppointments
+                        .where((appointment) =>
+                            appointment.startTime.year == now.year)
+                        .toList();
+
+                    return Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          Card(
+                            elevation: 4,
+                            color: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                                side: const BorderSide(
+                                    color: Color(0xFF7B86E2), width: 2.0)),
+                            child: const Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: Text(
+                                "Booking Appointments Data",
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18),
+                              ),
+                            ),
+                          ),
+                          Card(
+                            elevation: 4,
+                            color: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                              side: const BorderSide(
+                                color: Color(0xFF878493),
+                                width: 2.0,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          children: [
+                                            const Text(
+                                              "Total",
+                                              style: TextStyle(
+                                                color: Color(0xFF878493),
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            Text(
+                                              "${userAppointments.length}",
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        height:
+                                            50, // Adjust this value based on your design
+                                        width: 2.0,
+                                        child: VerticalDivider(
+                                          color: Color(0xFF878493),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Column(
+                                          children: [
+                                            const Text(
+                                              "Daily",
+                                              style: TextStyle(
+                                                color: Color(0xFF878493),
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            Text(
+                                              "${appointmentsToday.length}",
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Divider(
+                                  color: Color(0xFF878493),
+                                  thickness: 2.0,
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          children: [
+                                            const Text(
+                                              "Monthly",
+                                              style: TextStyle(
+                                                color: Color(0xFF878493),
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            Text(
+                                              "${appointmentsMonth.length}",
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        height:
+                                            50, // Adjust this value based on your design
+                                        width: 2.0,
+                                        child: VerticalDivider(
+                                          color: Color(0xFF878493),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Column(
+                                          children: [
+                                            const Text(
+                                              "Yearly",
+                                              style: TextStyle(
+                                                color: Color(0xFF878493),
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            Text(
+                                              "${appointmentsYear.length}",
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+              ),
               FutureBuilder(
                 future: pageViewsData,
                 builder: (context, snapshot) {
@@ -78,12 +292,23 @@ class StatsPageState extends State<StatsPage> {
                                       color: Color(0xFF7B86E2), width: 2.0)),
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  "Current Date: ${DateFormat('dd-MM-yyyy').format(pageViews['date'])}",
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18),
+                                child: Column(
+                                  children: [
+                                    const Text(
+                                      "Page Views",
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18),
+                                    ),
+                                    Text(
+                                      "Current Date: ${DateFormat('dd-MM-yyyy').format(pageViews['date'])}",
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -162,15 +387,44 @@ class StatsPageState extends State<StatsPage> {
                     }).toList();
 
 // Use the data in your LineChart
-                    return Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: SizedBox(
-                        height: 300,
-                        child: dynamicLineChart(
-                          sortedViews.toList(),
-                          sortedDates.toList(),
+                    return Column(
+                      children: [
+                        Container(
+                          height: 30,
                         ),
-                      ),
+                        Card(
+                          elevation: 4,
+                          color: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                              side: const BorderSide(
+                                  color: Color(0xFF7B86E2), width: 2.0)),
+                          child: const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Column(
+                              children: [
+                                Text(
+                                  "Page Views Graph",
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: SizedBox(
+                            height: 300,
+                            child: dynamicLineChart(
+                              sortedViews.toList(),
+                              sortedDates.toList(),
+                            ),
+                          ),
+                        ),
+                      ],
                     );
                   }
                 },
@@ -307,6 +561,60 @@ class StatsPageState extends State<StatsPage> {
 
   String _getCurrentYear2(DateTime dateTime) {
     return dateTime.year.toString();
+  }
+
+  Future<List<Appointment>> getAppointmentsForUser(String userUid) async {
+    try {
+      final DatabaseReference appointmentsRef = FirebaseDatabase.instance
+          .ref()
+          .child('users')
+          .child(userUid)
+          .child('appointmentsByDate');
+
+      final dataSnapshot = await appointmentsRef.get();
+
+      // Check if there are any appointments for the user
+      if (dataSnapshot.exists) {
+        // Convert the data to a Map<String, dynamic>
+        Map<dynamic, dynamic> appointmentsData =
+            dataSnapshot.value as Map<dynamic, dynamic>;
+
+        // Convert the Map to a List of Appointments
+        List<Appointment> appointments = appointmentsData.entries.map((entry) {
+          // Print the cancelled value for debugging
+
+          return Appointment.fromJson({
+            'userId': userUid,
+            'name': entry.value['name'],
+            'phone': entry.value['phone'],
+            'cancelled': entry.value['cancelled'],
+            'startTime': entry.value['startTime'],
+            'endTime': entry.value['endTime'],
+          });
+        }).toList();
+
+        // Print the original list for debugging
+
+        // Filter out canceled appointments
+        appointments = appointments
+            .where((appointment) => !appointment.cancelled)
+            .toList();
+
+        // Print the filtered list for debugging
+        // print('Filtered Appointments for user $userUid: $appointments');
+
+        return appointments;
+      } else {
+        // If there are no appointments, return an empty list
+        return [];
+      }
+    } catch (error) {
+      // Handle errors
+      // ignore: avoid_print
+      print('Error fetching appointments: $error');
+      // Optionally, you can throw an exception or handle the error in other ways
+      return [];
+    }
   }
 
   Widget buildPageViewCard(String title, int count, IconData icon,

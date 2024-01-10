@@ -8,6 +8,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'appointment_confirmation_popup.dart';
 // import 'package:timezone/timezone.dart' as tz;
 
@@ -362,9 +363,14 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                     Container(
                       height: 200,
                       width: double.infinity,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF7B86E2),
-                        borderRadius: BorderRadius.only(
+                      decoration: BoxDecoration(
+                        color: userProfile.primaryColor.isNotEmpty
+                            ? Color(int.parse(
+                                userProfile.primaryColor.substring(2),
+                                radix: 16))
+                            : const Color(
+                                0xFF7B86E2), // Default color if primaryColor is not available
+                        borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(10),
                           bottomRight: Radius.circular(100),
                         ),
@@ -897,6 +903,101 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                     Wrap(
                       alignment: WrapAlignment.center,
                       children: _getImagesWidgets(userProfile.businessPhotos),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                            onPressed: () async {
+                              if (userProfile.facebookLink.isNotEmpty) {
+                                var url = userProfile.facebookLink;
+                                final Uri uri = Uri.parse(url);
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri);
+                                } else {
+                                  throw 'Could not launch $url';
+                                }
+                              } else {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("There is no link yet."),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            // ignore: prefer_const_constructors
+                            icon: Icon(
+                              FontAwesomeIcons.facebook,
+                              size: 50,
+                              color: Colors.blue,
+                            )
+
+                            // Wrap Icons.facebook with Icon widget
+                            ),
+                        Container(
+                          width: 5,
+                        ),
+                        IconButton(
+                          onPressed: () async {
+                            if (userProfile.instagramLink.isNotEmpty) {
+                              var url = userProfile.instagramLink;
+                              final Uri uri = Uri.parse(url);
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri);
+                              } else {
+                                throw 'Could not launch $url';
+                              }
+                            } else {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("There is no link yet."),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          // ignore: prefer_const_constructors
+                          icon: Icon(
+                            FontAwesomeIcons.instagram,
+                            size: 50, // Adjust the icon size
+                            color: Colors.purple, // Set a suitable color
+                          ), // Wrap Icons.facebook with Icon widget
+                        ),
+                        Container(
+                          width: 5,
+                        ),
+                        IconButton(
+                          onPressed: () async {
+                            if (userProfile.websiteLink.isNotEmpty) {
+                              var url = userProfile.websiteLink;
+                              final Uri uri = Uri.parse(url);
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri);
+                              } else {
+                                throw 'Could not launch $url';
+                              }
+                            } else {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("There is no link yet."),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          // ignore: prefer_const_constructors
+                          icon: Icon(
+                            Icons.web,
+                            size: 50,
+                            color: Colors.teal,
+                          ), // Wrap Icons.facebook with Icon widget
+                        )
+                      ],
                     ),
                     const SizedBox(height: 16),
                   ],

@@ -69,6 +69,7 @@ dependencies:
   money_converter: ^2.0.2
   
   http: ^0.13.6
+  flutter_spinkit: ^5.2.0
 
 
 

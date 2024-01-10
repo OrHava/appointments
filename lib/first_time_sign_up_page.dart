@@ -32,6 +32,12 @@ class UserProfile {
   final String ownerName;
   final String businessLocation;
   final String businessType;
+
+  final String primaryColor;
+  final String facebookLink;
+  final String instagramLink;
+  final String websiteLink;
+
   double businessRating;
   List<String> ratedUserIds;
   Map<String, double> ratings; // New field to store ratings for each user
@@ -51,6 +57,10 @@ class UserProfile {
     required this.businessName,
     required this.businessInfo,
     required this.businessLocation,
+    required this.primaryColor,
+    required this.facebookLink,
+    required this.instagramLink,
+    required this.websiteLink,
     required this.businessType,
     required this.slotAllowedAmount,
     required this.businessFullAddress,
@@ -80,6 +90,10 @@ class UserProfile {
       'businessLocation': businessLocation,
       'businessType': businessType,
       'businessFullAddress': businessFullAddress,
+      'primaryColor': primaryColor,
+      'facebookLink': facebookLink,
+      'instagramLink': instagramLink,
+      'websiteLink': websiteLink,
       'businessAppointmentPolicies': businessAppointmentPolicies,
       'businessServicesOffered': businessServicesOffered,
       'businessPhotos': businessPhotos,
@@ -105,6 +119,12 @@ class UserProfile {
       phoneNumber: json['phoneNumber'] ?? "",
       businessName: json['businessName'] ?? "",
       businessInfo: json['businessInfo'] ?? "",
+
+      primaryColor: json['primaryColor'] ?? "",
+      facebookLink: json['facebookLink'] ?? "",
+      instagramLink: json['instagramLink'] ?? "",
+      websiteLink: json['websiteLink'] ?? "",
+
       slotAllowedAmount: json['slotAllowedAmount'] ?? 1,
       businessLocation: json['businessLocation'] ?? "",
       slotDurationInMinutes: json['slotDurationInMinutes'] ?? 30,
@@ -216,9 +236,15 @@ class FirstTimeSignUpPage extends StatefulWidget {
 class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
   final TextEditingController fullNameController = TextEditingController();
   final TextEditingController phoneNumberController = TextEditingController();
+
   final TextEditingController businessNameController = TextEditingController();
   final TextEditingController businessInfoController = TextEditingController();
   final TextEditingController ownerNameController = TextEditingController();
+
+  final TextEditingController facebookLinkController = TextEditingController();
+  final TextEditingController instagramLinkController = TextEditingController();
+  final TextEditingController websiteLinkController = TextEditingController();
+
   final TextEditingController businessFullAddressController =
       TextEditingController();
   final TextEditingController businessAppointmentPoliciesController =
@@ -263,6 +289,8 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
   String? selectedBusinessLocation = 'Tel Aviv';
   int? selectedslotDurationInMinutes = 30;
   int? selectedslotAllowed = 1;
+  String selectedColor = '0xFF7B86E2'; // Default color
+
   LinkedHashMap<String, Map<String, dynamic>> businessSchedule =
       LinkedHashMap<String, Map<String, dynamic>>.from({
     "Monday": {
@@ -941,6 +969,74 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
               'Business Appointment Policies', FontAwesomeIcons.calendarCheck),
         ),
         const SizedBox(height: 16),
+        DropdownButtonFormField<Map<String, String>>(
+          value: primaryColors
+              .firstWhere((color) => color['code'] == selectedColor),
+          onChanged: (Map<String, String>? newValue) {
+            setState(() {
+              selectedColor = newValue!['code']!;
+            });
+          },
+          items: primaryColors.map<DropdownMenuItem<Map<String, String>>>(
+              (Map<String, String> color) {
+            return DropdownMenuItem<Map<String, String>>(
+              value: color,
+              child: Row(
+                children: [
+                  Container(
+                    color: Color(
+                        int.parse(color['code']!.substring(2), radix: 16)),
+                    height: 20.0,
+                    width: 20.0,
+                    margin: const EdgeInsets.only(right: 10.0),
+                  ),
+                  Text(
+                    color['name']!,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+          style: const TextStyle(
+            color: Colors.black, // Set the text color for the dropdown menu
+          ),
+          dropdownColor: Colors.black,
+          decoration: buildInputDecoration(
+              'Business Page Primary Color', Icons.color_lens),
+        ),
+
+        const SizedBox(height: 16),
+        TextField(
+          keyboardType: TextInputType.url,
+          controller: facebookLinkController,
+          style: const TextStyle(
+            color: Colors.white, // Set the text color
+          ),
+          decoration:
+              buildInputDecoration('Facebook Link', FontAwesomeIcons.facebook),
+        ),
+
+        const SizedBox(height: 16),
+        TextField(
+          keyboardType: TextInputType.url,
+          controller: instagramLinkController,
+          style: const TextStyle(
+            color: Colors.white, // Set the text color
+          ),
+          decoration: buildInputDecoration(
+              'Instagram Link', FontAwesomeIcons.instagram),
+        ),
+
+        const SizedBox(height: 16),
+        TextField(
+          keyboardType: TextInputType.url,
+          controller: websiteLinkController,
+          style: const TextStyle(
+            color: Colors.white, // Set the text color
+          ),
+          decoration: buildInputDecoration('Website Link', Icons.web),
+        ),
 
         const SizedBox(height: 30),
         const Align(
@@ -1392,6 +1488,18 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
     'Other',
   ];
 
+  List<Map<String, String>> primaryColors = [
+    {'name': 'App Light Purple', 'code': '0xFF7B86E2'},
+    {'name': 'Blue', 'code': '0xFF3498DB'},
+    {'name': 'Green', 'code': '0xFF2ECC71'},
+    {'name': 'Yellow', 'code': '0xFFF1C40F'},
+    {'name': 'Red', 'code': '0xFFE74C3C'},
+    {'name': 'Purple', 'code': '0xFF9B59B6'},
+    {'name': 'Orange', 'code': '0xFFE67E22'},
+    {'name': 'Teal', 'code': '0xFF008080'},
+    {'name': 'Pink', 'code': '0xFFE91E63'},
+  ];
+
   List<int> businessSlotDurationInMinutes = [
     10,
     20,
@@ -1443,6 +1551,14 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
           selectedBusinessType = userProfileData['businessType'] ?? '';
           selectedslotDurationInMinutes =
               userProfileData['slotDurationInMinutes'] ?? '';
+
+          selectedColor = userProfileData['primaryColor'] ?? '';
+
+          instagramLinkController.text = userProfileData['instagramLink'] ?? '';
+
+          facebookLinkController.text = userProfileData['facebookLink'] ?? '';
+
+          websiteLinkController.text = userProfileData['websiteLink'] ?? '';
 
           businessFullAddressController.text =
               userProfileData['businessFullAddress'] ?? '';
@@ -1690,8 +1806,12 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
           'businessLocation': selectedBusinessLocation!.trim(),
           'businessType': selectedBusinessType!.trim(),
           'ownerName': ownerNameController.text.trim(),
+          'facebookLink': facebookLinkController.text.trim(),
+          'instagramLink': instagramLinkController.text.trim(),
+          'websiteLink': websiteLinkController.text.trim(),
           'businessSchedule': _convertBusinessScheduleToJson(businessSchedule),
           'slotDurationInMinutes': selectedslotDurationInMinutes,
+          'primaryColor': selectedColor,
           'photoUrl': imageUrl,
           'businessFullAddress': businessFullAddressController.text.trim(),
           'businessAppointmentPolicies':

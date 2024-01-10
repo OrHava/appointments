@@ -1,5 +1,6 @@
 import 'package:appointments/home_page_business.dart';
 import 'package:appointments/sign_in_screen.dart';
+import 'package:appointments/splash_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -115,11 +116,7 @@ class AuthenticationWrapper extends StatelessWidget {
             future: getUserType(snapshot.data!.uid),
             builder: (context, userTypeSnapshot) {
               if (userTypeSnapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(
-                    color: Colors.red,
-                  ),
-                );
+                return const SplashScreen();
               }
 
               String? userType = userTypeSnapshot.data;
