@@ -1,9 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import 'first_time_sign_up_page.dart';
-import 'home_page.dart';
-
 class SignUpScreen extends StatelessWidget {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -162,18 +159,20 @@ class SignUpScreen extends StatelessWidget {
       // Check if the user is signing up for the first time
       if (userCredential.additionalUserInfo!.isNewUser && context.mounted) {
         // Redirect the user to a different page for the first-time sign-up
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const FirstTimeSignUpPage()),
-        );
+        Future.delayed(Duration.zero, () {
+          Navigator.of(context).pushReplacementNamed('/firstTimeSignUp');
+        });
       } else {
         // Redirect the user to the home page for existing users
         if (context.mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const HomePage(pageNumber: 0)),
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("User Already Signed."),
+            ),
           );
+          Future.delayed(Duration.zero, () {
+            Navigator.of(context).pushReplacementNamed('/signIn');
+          });
         }
       }
     } catch (e) {

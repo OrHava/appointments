@@ -1,19 +1,14 @@
 import 'dart:io';
 
-import 'package:appointments/about_page.dart';
-import 'package:appointments/account_settings_page.dart';
-import 'package:appointments/earnings_page.dart';
-import 'package:appointments/help_center_page.dart';
-import 'package:appointments/premium_account_management.dart';
 import 'package:appointments/settings_page.dart';
-import 'package:appointments/sign_in_screen.dart';
-import 'package:appointments/stats_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:table_calendar/table_calendar.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -229,11 +224,8 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                 ),
                 onTap: () {
                   if (context.mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const AboutPage()),
-                    );
+                    Navigator.of(context).pushReplacementNamed('/about',
+                        arguments: {'source': 'businessHome'});
                   }
                 },
               ),
@@ -252,12 +244,7 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                 ),
                 onTap: () {
                   if (context.mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const StatsPage(),
-                      ),
-                    );
+                    Navigator.of(context).pushReplacementNamed('/stats');
                   }
                 },
               ),
@@ -273,14 +260,8 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                 ),
                 onTap: () {
                   if (context.mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EarningsPage(
-                          userId: user!.uid,
-                        ),
-                      ),
-                    );
+                    Navigator.of(context)
+                        .pushNamed('/earnings', arguments: user!.uid);
                   }
                 },
               ),
@@ -295,11 +276,46 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                 leading:
                     const Icon(Icons.contact_page, color: Color(0xFF878493)),
                 onTap: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const FirstTimeSignUpPage()),
-                  );
+                  Navigator.of(context)
+                      .pushReplacementNamed('/firstTimeSignUp');
+                },
+              ),
+              ListTile(
+                title: const Text(
+                  'Share',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                leading: const Icon(Icons.share, color: Color(0xFF878493)),
+                onTap: () async {
+                  User? user = FirebaseAuth.instance.currentUser;
+
+                  if (user != null) {
+                    // String userId = user.uid;
+
+                    // Handle the tap on a search result using Fluro router
+                    String baseUrl =
+                        'https://orhava.web.app/businessProfile/${user.uid}'; // Replace with your actual base URL
+
+                    if (kIsWeb) {
+                      var url = baseUrl;
+                      final Uri uri = Uri.parse(url);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri);
+                      } else {
+                        throw 'Could not launch $url';
+                      }
+                    } else {
+                      // For mobile, use Share package
+                      Share.share(
+                        baseUrl,
+                        subject: 'Business Link',
+                      );
+                    }
+                  }
+                  // Handle the tap on a search result using Fluro router
                 },
               ),
               const Divider(
@@ -323,11 +339,8 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                   color: Color(0xFF878493),
                 ),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => AccountSettingsPage()),
-                  );
+                  Navigator.of(context).pushReplacementNamed('/accountSettings',
+                      arguments: {'source': 'businessHome'});
                 },
               ),
               ListTile(
@@ -341,11 +354,7 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                   color: Color(0xFF878493),
                 ),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const SettingsPage()),
-                  );
+                  Navigator.of(context).pushReplacementNamed('/settings');
                 },
               ),
               ListTile(
@@ -359,11 +368,23 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                   color: Color(0xFF878493),
                 ),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const PremiumAccountManagement()),
-                  );
+                  if (kIsWeb) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            'Please connect with the app to manage your premium account.'),
+                        duration: Duration(
+                            seconds:
+                                4), // You can adjust the duration as needed
+                      ),
+                    );
+                  } else {
+                    // Navigate to premium account management page for mobile platforms
+
+                    Navigator.of(context).pushReplacementNamed(
+                        '/premiumAccountManagement',
+                        arguments: {'source': 'businessHome'});
+                  }
                 },
               ),
               ListTile(
@@ -391,10 +412,7 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                   color: Color(0xFF878493),
                 ),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => HelpCenterPage()),
-                  );
+                  Navigator.of(context).pushReplacementNamed('/helpCenter');
                 },
               ),
               ListTile(
@@ -413,12 +431,7 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                     await GoogleSignIn().signOut();
 
                     if (context.mounted) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SignInScreen(),
-                        ),
-                      );
+                      Navigator.of(context).pushReplacementNamed('/signIn');
                     }
                   } catch (e) {
                     // ignore: avoid_print
@@ -931,6 +944,10 @@ class HomePageBusinessState extends State<HomePageBusiness> {
       return Column(
         children: [
           TableCalendar(
+            onFormatChanged: (format) {
+              // Dummy callback to satisfy the assertion
+              null;
+            },
             availableCalendarFormats: const {
               CalendarFormat.week: 'Week',
               CalendarFormat.month: 'Month',
@@ -940,6 +957,9 @@ class HomePageBusinessState extends State<HomePageBusiness> {
             selectedDayPredicate: (day) => isSameDay(day, _selectedDate),
             lastDay: DateTime.utc(2030, 3, 14),
             headerStyle: const HeaderStyle(
+              formatButtonDecoration: BoxDecoration(
+                color: Colors.transparent, // Change this to the color you want
+              ),
               leftChevronIcon: Icon(
                 Icons.arrow_back_ios,
                 color: Colors.white, // Change this to the color you want

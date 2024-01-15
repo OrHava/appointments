@@ -27,7 +27,9 @@ const List<String> _kProductIds = <String>[
 ];
 
 class PremiumAccountManagement extends StatefulWidget {
-  const PremiumAccountManagement({super.key});
+  const PremiumAccountManagement({Key? key, required this.source})
+      : super(key: key);
+  final String source;
 
   @override
   State<PremiumAccountManagement> createState() =>
@@ -191,7 +193,11 @@ class PremiumAccountManagementState extends State<PremiumAccountManagement> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () {
-              Navigator.pop(context);
+              if (widget.source == 'businessHome') {
+                Navigator.of(context).pushReplacementNamed('/businessHome');
+              } else {
+                Navigator.of(context).pushReplacementNamed('/firstTimeSignUp');
+              }
             },
           ),
         ),

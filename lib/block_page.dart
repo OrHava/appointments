@@ -129,6 +129,12 @@ class BlockPageState extends State<BlockPage> {
                 fontWeight: FontWeight.bold,
               )),
           backgroundColor: const Color(0xFF7B86E2), // Set theme color
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.of(context).pushReplacementNamed('/settings');
+            },
+          ),
         ),
         body: Container(
           color: const Color(0xFF161229), // Set background color

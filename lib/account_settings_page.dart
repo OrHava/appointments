@@ -8,8 +8,8 @@ class AccountSettingsPage extends StatelessWidget {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final TextEditingController _feedbackController = TextEditingController();
 
-  AccountSettingsPage({super.key});
-
+  AccountSettingsPage({Key? key, required this.source}) : super(key: key);
+  final String source;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -20,6 +20,16 @@ class AccountSettingsPage extends StatelessWidget {
               color: Colors.white,
               fontWeight: FontWeight.bold,
             )),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (source == 'businessHome') {
+              Navigator.of(context).pushReplacementNamed('/businessHome');
+            } else {
+              Navigator.of(context).pushReplacementNamed('/settings');
+            }
+          },
+        ),
       ),
       backgroundColor: const Color(0xFF161229),
       body: Padding(

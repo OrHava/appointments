@@ -1,13 +1,7 @@
-import 'package:appointments/account_settings_page.dart';
-import 'package:appointments/notification_page.dart';
-import 'package:appointments/sign_in_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-import 'about_page.dart';
-import 'block_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -26,7 +20,8 @@ class SettingsPage extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pop(context);
+            Navigator.of(context)
+                .pushReplacementNamed('/authenticationWrapper');
           },
         ),
       ),
@@ -40,12 +35,8 @@ class SettingsPage extends StatelessWidget {
               Icons.account_circle,
               () {
                 if (context.mounted) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AccountSettingsPage(),
-                    ),
-                  );
+                  Navigator.of(context).pushReplacementNamed('/accountSettings',
+                      arguments: {'source': 'settings'});
                 }
               },
             ),
@@ -54,12 +45,7 @@ class SettingsPage extends StatelessWidget {
               Icons.notifications,
               () {
                 if (context.mounted) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const NotificationPage(),
-                    ),
-                  );
+                  Navigator.of(context).pushReplacementNamed('/notification');
                 }
               },
             ),
@@ -68,12 +54,7 @@ class SettingsPage extends StatelessWidget {
               Icons.block,
               () {
                 if (context.mounted) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const BlockPage(),
-                    ),
-                  );
+                  Navigator.of(context).pushReplacementNamed('/blockPage');
                 }
               },
             ),
@@ -82,12 +63,8 @@ class SettingsPage extends StatelessWidget {
               Icons.info,
               () {
                 if (context.mounted) {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AboutPage(),
-                    ),
-                  );
+                  Navigator.of(context).pushReplacementNamed('/about',
+                      arguments: {'source': 'settings'});
                 }
               },
             ),
@@ -128,12 +105,7 @@ class SettingsPage extends StatelessWidget {
                   await GoogleSignIn().signOut();
 
                   if (context.mounted) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const SignInScreen(),
-                      ),
-                    );
+                    Navigator.of(context).pushReplacementNamed('/signIn');
                   }
                 } catch (e) {
                   // ignore: avoid_print

@@ -1,6 +1,5 @@
 import 'package:appointments/appointments_list.dart';
-import 'package:appointments/business_profile_page.dart';
-import 'package:appointments/settings_page.dart';
+import 'package:appointments/main.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -425,17 +424,15 @@ class HomePageState extends State<HomePage> {
               GestureDetector(
                 onTap: () {
                   FocusScope.of(context).unfocus();
+                  RoutePaths.businessId = '/${appointment.userId}';
 
-                  // Navigate to BusinessProfilePage
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => BusinessProfilePage(
-                        appointment.userId,
-                        userName,
-                        userPhone, //here is the problem
-                      ),
-                    ),
+                  Navigator.of(context).pushNamed(
+                    '/businessProfile${RoutePaths.businessId}',
+                    arguments: {
+                      'businessId': appointment.userId,
+                      'userName': userName,
+                      'userPhone': userPhone,
+                    },
                   );
                 },
                 child: SizedBox(
@@ -1170,13 +1167,9 @@ class HomePageState extends State<HomePage> {
                                       ),
                                       onPressed: () {
                                         if (context.mounted) {
-                                          Navigator.pushReplacement(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const FirstTimeSignUpPage(),
-                                            ),
-                                          );
+                                          Navigator.of(context)
+                                              .pushReplacementNamed(
+                                                  '/firstTimeSignUp');
                                         }
                                       },
                                     ),
@@ -1315,13 +1308,9 @@ class HomePageState extends State<HomePage> {
                                         ),
                                         onPressed: () {
                                           if (context.mounted) {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    const SettingsPage(),
-                                              ),
-                                            );
+                                            Navigator.of(context)
+                                                .pushReplacementNamed(
+                                                    '/settings');
                                           }
                                         },
                                       ),
@@ -1422,16 +1411,15 @@ class SearchResultPage extends StatelessWidget {
             subtitle: Text(searchResults[index].businessLocation,
                 style: const TextStyle(color: Colors.white)),
             onTap: () {
-              // Handle the tap on a search result
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => BusinessProfilePage(
-                    searchResults[index].uid,
-                    userName,
-                    userPhone,
-                  ),
-                ),
+              RoutePaths.businessId = '/${searchResults[index].uid}';
+
+              Navigator.of(context).pushNamed(
+                '/businessProfile${RoutePaths.businessId}',
+                arguments: {
+                  'businessId': searchResults[index].uid,
+                  'userName': userName,
+                  'userPhone': userPhone,
+                },
               );
             },
           );

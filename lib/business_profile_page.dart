@@ -20,6 +20,7 @@ class BusinessProfilePage extends StatefulWidget {
   final String businessId;
   final String? userName;
   final String? userPhone;
+
   const BusinessProfilePage(this.businessId, this.userName, this.userPhone,
       {Key? key})
       : super(key: key);
@@ -48,6 +49,12 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
       return Scaffold(
         backgroundColor: const Color(0xFF161229),
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              Navigator.of(context).pushReplacementNamed('/home');
+            },
+          ),
           backgroundColor: const Color(0xFF7B86E2),
           title: const Text('Business Profile',
               style: TextStyle(

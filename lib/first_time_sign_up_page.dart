@@ -385,8 +385,7 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
                   children: [
                     IconButton(
                       onPressed: () {
-                        final key = UniqueKey();
-                        runApp(MyApp(key: key));
+                        Navigator.of(context).pushReplacementNamed('/');
                       },
                       icon: const Icon(
                         Icons
@@ -401,11 +400,7 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
                       onPressed: () {
                         if (context.mounted) {
                           // Redirect the user to the user page
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const SignInScreen()),
-                          );
+                          Navigator.of(context).pushReplacementNamed('/signIn');
                         }
                       },
                       icon: const Icon(
@@ -467,13 +462,13 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
                                           actions: [
                                             IconButton(
                                               onPressed: () {
-                                                Navigator.pop(context);
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                      builder: (context) =>
-                                                          const PremiumAccountManagement()),
-                                                );
+                                                Navigator.of(context)
+                                                    .pushReplacementNamed(
+                                                        '/premiumAccountManagement',
+                                                        arguments: {
+                                                      'source':
+                                                          'firstTimeSignUp'
+                                                    });
                                               },
                                               icon: const Icon(Icons.store),
                                             ),

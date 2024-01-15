@@ -38,6 +38,12 @@ class NotificationPageState extends State<NotificationPage> {
       backgroundColor: const Color(0xFF161229),
       appBar: AppBar(
         backgroundColor: const Color(0xFF7B86E2),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.of(context).pushReplacementNamed('/settings');
+          },
+        ),
         title: const Text('Notification Settings',
             style: TextStyle(
               color: Colors.white,

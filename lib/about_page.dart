@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_sequence_animation/flutter_sequence_animation.dart';
 
 class AboutPage extends StatelessWidget {
-  const AboutPage({Key? key}) : super(key: key);
-
+  const AboutPage({Key? key, required this.source}) : super(key: key);
+  final String source;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -15,6 +15,16 @@ class AboutPage extends StatelessWidget {
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (source == 'businessHome') {
+              Navigator.of(context).pushReplacementNamed('/businessHome');
+            } else {
+              Navigator.of(context).pushReplacementNamed('/settings');
+            }
+          },
         ),
       ),
       backgroundColor: const Color(0xFF161229),
@@ -37,7 +47,7 @@ class AboutPage extends StatelessWidget {
             Padding(
               padding: EdgeInsets.all(16.0),
               child: Text(
-                'Version 3',
+                'Version 2',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 18.0, color: Colors.white),
               ),

@@ -51,5 +51,14 @@
     <string>INSERT_REASON_HERE</string>
 	<key>NSContactsUsageDescription</key>
     <string>INSERT_REASON_HERE</string>
+	<key>CFBundleURLTypes</key>
+    <array>
+    <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>orhava.web.app</string> <!-- Change "yourapp" to your unique scheme -->
+        </array>
+    </dict>
+    </array>
 </dict>
 </plist>

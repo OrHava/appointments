@@ -5,9 +5,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:firebase_database/firebase_database.dart';
-import 'first_time_sign_up_page.dart';
-import 'home_page.dart';
-import 'home_page_business.dart';
 import 'sign_up_screen.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -261,10 +258,9 @@ class SignInScreenState extends State<SignInScreen> {
       // Check if the user is signing in for the first time
       if (userCredential.additionalUserInfo!.isNewUser && context.mounted) {
         // Redirect the user to a different page for the first-time sign-in
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const FirstTimeSignUpPage()),
-        );
+        Future.delayed(Duration.zero, () {
+          Navigator.of(context).pushReplacementNamed('/firstTimeSignUp');
+        });
       } else {
         if (context.mounted) {
           redirectToHomePage(context, userType);
@@ -325,10 +321,9 @@ class SignInScreenState extends State<SignInScreen> {
       // Check if the user is signing in for the first time
       if (userCredential.additionalUserInfo!.isNewUser && context.mounted) {
         // Redirect the user to a different page for the first-time sign-in
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const FirstTimeSignUpPage()),
-        );
+        Future.delayed(Duration.zero, () {
+          Navigator.of(context).pushReplacementNamed('/firstTimeSignUp');
+        });
       } else {
         // Redirect based on user type
         if (context.mounted) {
@@ -398,23 +393,19 @@ class SignInScreenState extends State<SignInScreen> {
 
   void redirectToHomePage(BuildContext context, String? userType) {
     if (userType == 'user') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage(pageNumber: 0)),
-      );
+      Future.delayed(Duration.zero, () {
+        Navigator.of(context).pushReplacementNamed('/home');
+      });
     } else if (userType == 'business') {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-            builder: (context) => const HomePageBusiness(pageNumber: 0)),
-      );
+      Future.delayed(Duration.zero, () {
+        Navigator.of(context).pushReplacementNamed('/businessHome');
+      });
     } else {
       // Handle the case where user type is not recognized
       // ignore: avoid_print
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const FirstTimeSignUpPage()),
-      );
+      Future.delayed(Duration.zero, () {
+        Navigator.of(context).pushReplacementNamed('/firstTimeSignUp');
+      });
       //  print("Unknown user type");
     }
   }
