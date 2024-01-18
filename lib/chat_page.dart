@@ -1,9 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 
 class Message {
   final String text;
@@ -53,17 +58,119 @@ class ChatPageState extends State<ChatPage> {
   late DatabaseReference reference;
   late StreamController<List<Message>> _streamController;
   List<Message> messages = [];
-
+  String? mtoken = " ";
   late ScrollController _scrollController;
+  late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
   @override
   void setState(fn) {
     if (mounted) super.setState(fn);
   }
 
+  initInfo() {
+    var androidInitialize =
+        const AndroidInitializationSettings('@mipmap/ic_launcher');
+    var iOsInitialize = const DarwinInitializationSettings();
+    var initializationsSettings =
+        InitializationSettings(android: androidInitialize, iOS: iOsInitialize);
+    flutterLocalNotificationsPlugin.initialize(
+      initializationsSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) async {
+        try {
+          var payload = response.payload;
+          if (payload != null && payload.isNotEmpty) {
+            // Handle notification tap
+          } else {
+            // Handle notification tap when payload is empty
+          }
+        } catch (e) {
+          // Handle exceptions
+        }
+      },
+    );
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      if (kDebugMode) {
+        print("on message: ${message.notification?.title}");
+      }
+      BigTextStyleInformation bigTextStyleInformation = BigTextStyleInformation(
+        message.notification!.body.toString(),
+        htmlFormatBigText: true,
+        contentTitle: message.notification!.title.toString(),
+        htmlFormatContentTitle: true,
+      );
+      AndroidNotificationDetails androidNotificationDetails =
+          AndroidNotificationDetails('Appointments', 'Appointments',
+              importance: Importance.high,
+              styleInformation: bigTextStyleInformation,
+              priority: Priority.high,
+              playSound: true);
+      NotificationDetails notificationDetails = NotificationDetails(
+          android: androidNotificationDetails,
+          iOS: const DarwinNotificationDetails());
+      await flutterLocalNotificationsPlugin.show(0, message.notification?.title,
+          message.notification?.body, notificationDetails,
+          payload: message.data['body']);
+    });
+  }
+
+  void sendPushMessage(String token, String body, String title) async {
+    try {
+      await http.post(Uri.parse('https://fcm.googleapis.com/fcm/send'),
+          headers: <String, String>{
+            'Content-Type': 'application/json',
+            'Authorization':
+                'key=AAAAXZbqPbk:APA91bE7r68H2XUodI1ec_KV4Cl3dOwbKjefoE8pdoiX42FfYGFj5QhluMAK207PZQpEGqkm8svPVi95tsp0R6kHVDj1wnpLru4GySipQnm9vyOeqnqCcnCqwfJ8WZLA5BvwbEkpKPLd'
+          },
+          body: jsonEncode(<String, dynamic>{
+            'priority': 'high',
+            'data': <String, dynamic>{
+              'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+              'status': 'done',
+              'body': body,
+              'title': title,
+            },
+            "notification": <String, dynamic>{
+              "title": title,
+              "body": body,
+              "android_channel_id": "GiseleHava4"
+            },
+            "to": token,
+          }));
+    } catch (e) {
+      if (kDebugMode) {
+        print("error push notification");
+      }
+    }
+  }
+
+  void getToken() async {
+    await FirebaseMessaging.instance.getToken().then((token) => {
+          setState(() {
+            mtoken = token;
+          }),
+          saveToken(token!),
+        });
+  }
+
+  void saveToken(String token) async {
+    await FirebaseFirestore.instance
+        .collection("UserTokens")
+        .doc(widget.senderId)
+        .set({
+      'token': token,
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    if (!kIsWeb) {
+      getToken();
+      initInfo();
+    }
+
     _scrollController = ScrollController();
     List<String> participants = [widget.sendToId, widget.senderId];
     participants.sort();
@@ -90,6 +197,12 @@ class ChatPageState extends State<ChatPage> {
         _streamController.add(messages);
       }
     });
+  }
+
+  String getConversationId(String userId1, String userId2) {
+    List<String> participants = [userId1, userId2];
+    participants.sort();
+    return "${participants[0]}_${participants[1]}";
   }
 
   @override
@@ -180,7 +293,7 @@ class ChatPageState extends State<ChatPage> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: () {
+                  onPressed: () async {
                     final message = Message(
                       text: _textEditingController.text,
                       sender: widget.senderId,
@@ -195,6 +308,32 @@ class ChatPageState extends State<ChatPage> {
                       'sendToName': widget.sendToName,
                       'timestamp': message.timestamp,
                     });
+
+                    DocumentSnapshot snap = await FirebaseFirestore.instance
+                        .collection("UserTokens")
+                        .doc(widget.sendToId)
+                        .get();
+
+                    if (snap.exists && !kIsWeb) {
+                      // Document exists
+                      if (snap.data() != null && snap['token'] != null) {
+                        // Token field exists and has a value
+                        String token = snap['token'];
+                        sendPushMessage(token, message.text,
+                            "Message from ${message.senderName}");
+                        // Now you can use the token for further processing
+                      } else {
+                        if (kDebugMode) {
+                          print('Token field does not exist or is null.');
+                        }
+                      }
+                    } else {
+                      // Document does not exist
+                      if (kDebugMode) {
+                        print(
+                            'Document does not exist for ID: ${widget.senderId}');
+                      }
+                    }
 
                     _textEditingController.clear();
                   },

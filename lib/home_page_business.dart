@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:appointments/settings_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -16,6 +18,7 @@ import 'appointments_list.dart';
 import 'chat_page.dart';
 import 'first_time_sign_up_page.dart';
 import 'helpers.dart';
+import 'package:universal_html/html.dart' as html;
 
 class HomePageBusiness extends StatefulWidget {
   final int pageNumber;
@@ -61,6 +64,11 @@ class HomePageBusinessState extends State<HomePageBusiness> {
   @override
   void initState() {
     super.initState();
+
+    if (!kIsWeb) {
+      getToken();
+      NotificationHandler.handleNotification(context);
+    }
     // Set the initial page based on the provided pageNumber
     _currentIndex = widget.pageNumber;
     _selectedDate = DateTime.utc(
@@ -300,13 +308,39 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                         'https://orhava.web.app/businessProfile/${user.uid}'; // Replace with your actual base URL
 
                     if (kIsWeb) {
-                      var url = baseUrl;
-                      final Uri uri = Uri.parse(url);
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri);
-                      } else {
-                        throw 'Could not launch $url';
-                      }
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text(
+                                'Copy Your Business Link to Clipboard?'),
+                            content: Text(baseUrl),
+                            actions: <Widget>[
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  // Copy to clipboard
+                                  html.window.navigator.clipboard!
+                                      .writeText(baseUrl);
+                                  Navigator.of(context).pop();
+                                  // Show a snackbar indicating that the link is copied to the clipboard
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content:
+                                            Text('Link copied to clipboard')),
+                                  );
+                                },
+                                child: const Text('Copy'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
                     } else {
                       // For mobile, use Share package
                       Share.share(
@@ -595,6 +629,28 @@ class HomePageBusinessState extends State<HomePageBusiness> {
     }
   }
 
+  void getToken() async {
+    await FirebaseMessaging.instance.getToken().then((token) => {
+          saveToken(token!),
+        });
+  }
+
+  void saveToken(String token) async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    // Check if the user is signed in
+    if (user != null) {
+      // Get the user ID
+      String userId = user.uid;
+      await FirebaseFirestore.instance
+          .collection("UserTokens")
+          .doc(userId)
+          .set({
+        'token': token,
+      });
+    }
+  }
+
   Future<List<Appointment>> getAppointmentsForUser(
       String userUid, AppointmentFilter filter) async {
     try {
@@ -616,6 +672,7 @@ class HomePageBusinessState extends State<HomePageBusiness> {
                   'name': entry.value['name'],
                   'phone': entry.value['phone'],
                   'cancelled': entry.value['cancelled'],
+                  'approved': entry.value['approved'],
                   'startTime': entry.value['startTime'],
                   'endTime': entry.value['endTime'],
                   'pushId': entry.value['pushId'],

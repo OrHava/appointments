@@ -47,7 +47,7 @@ class AboutPage extends StatelessWidget {
             Padding(
               padding: EdgeInsets.all(16.0),
               child: Text(
-                'Version 2',
+                'Version 5',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 18.0, color: Colors.white),
               ),

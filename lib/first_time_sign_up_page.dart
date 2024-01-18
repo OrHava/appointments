@@ -5,6 +5,7 @@ import 'dart:collection';
 import 'package:appointments/home_page.dart';
 import 'package:appointments/premium_account_management.dart';
 import 'package:appointments/sign_in_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -37,6 +38,7 @@ class UserProfile {
   final String facebookLink;
   final String instagramLink;
   final String websiteLink;
+  final bool requirePermission;
 
   double businessRating;
   List<String> ratedUserIds;
@@ -61,6 +63,7 @@ class UserProfile {
     required this.facebookLink,
     required this.instagramLink,
     required this.websiteLink,
+    required this.requirePermission,
     required this.businessType,
     required this.slotAllowedAmount,
     required this.businessFullAddress,
@@ -89,6 +92,7 @@ class UserProfile {
       'businessInfo': businessInfo,
       'businessLocation': businessLocation,
       'businessType': businessType,
+      'requirePermission': requirePermission,
       'businessFullAddress': businessFullAddress,
       'primaryColor': primaryColor,
       'facebookLink': facebookLink,
@@ -124,6 +128,7 @@ class UserProfile {
       facebookLink: json['facebookLink'] ?? "",
       instagramLink: json['instagramLink'] ?? "",
       websiteLink: json['websiteLink'] ?? "",
+      requirePermission: json['requirePermission'] ?? false,
 
       slotAllowedAmount: json['slotAllowedAmount'] ?? 1,
       businessLocation: json['businessLocation'] ?? "",
@@ -265,6 +270,7 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
       StreamController<double>();
   Stream<double> get uploadProgressStream => _progressController.stream;
   bool hasValidSubscription = false;
+  bool requirePermission = false;
 
   @override
   void initState() {
@@ -447,36 +453,46 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
                                   // User has a valid subscription, set the userType to "business"
                                   userType = "business";
                                 } else {
+                                  if (!kIsWeb) {
+                                    if (context.mounted) {
+                                      showDialog(
+                                        context: context,
+                                        builder: (BuildContext context) {
+                                          return AlertDialog(
+                                            title: const Text(
+                                                "Subscription Required"),
+                                            content: const Text(
+                                                "To access the Business role, please subscribe."),
+                                            actions: [
+                                              IconButton(
+                                                onPressed: () {
+                                                  Navigator.of(context)
+                                                      .pushReplacementNamed(
+                                                          '/premiumAccountManagement',
+                                                          arguments: {
+                                                        'source':
+                                                            'firstTimeSignUp'
+                                                      });
+                                                },
+                                                icon: const Icon(Icons.store),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+                                    }
+                                  } else {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                'Enter Via App For buy premium account.')),
+                                      );
+                                    }
+                                  }
                                   // User does not have a valid subscription, handle accordingly
                                   // For example, show a message or prompt the user to subscribe
-
-                                  if (context.mounted) {
-                                    showDialog(
-                                      context: context,
-                                      builder: (BuildContext context) {
-                                        return AlertDialog(
-                                          title: const Text(
-                                              "Subscription Required"),
-                                          content: const Text(
-                                              "To access the Business role, please subscribe."),
-                                          actions: [
-                                            IconButton(
-                                              onPressed: () {
-                                                Navigator.of(context)
-                                                    .pushReplacementNamed(
-                                                        '/premiumAccountManagement',
-                                                        arguments: {
-                                                      'source':
-                                                          'firstTimeSignUp'
-                                                    });
-                                              },
-                                              icon: const Icon(Icons.store),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    );
-                                  }
                                 }
                               });
                             },
@@ -964,9 +980,55 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
               'Business Appointment Policies', FontAwesomeIcons.calendarCheck),
         ),
         const SizedBox(height: 16),
+        const Padding(
+          padding: EdgeInsets.all(12.0),
+          child: Row(
+            children: [
+              Icon(
+                Icons.approval,
+                color: Color(
+                  0xFF878493,
+                ),
+                size: 22,
+              ),
+              SizedBox(
+                width: 16,
+              ),
+              Text(
+                'Request permission',
+                style: TextStyle(
+                  fontSize: 12.0,
+                  color: Color(0xFF878493),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Tooltip(
+              message:
+                  "Request permission from clients when making appointments, and you, the user, will approve each client appointment.",
+              triggerMode: TooltipTriggerMode.longPress,
+              child: Switch(
+                value: requirePermission,
+                onChanged: (value) {
+                  setState(() {
+                    requirePermission = value;
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
         DropdownButtonFormField<Map<String, String>>(
-          value: primaryColors
-              .firstWhere((color) => color['code'] == selectedColor),
+          value: primaryColors.firstWhere(
+            (color) => color['code'] == selectedColor,
+            orElse: () => primaryColors.first,
+          ),
           onChanged: (Map<String, String>? newValue) {
             setState(() {
               selectedColor = newValue!['code']!;
@@ -1548,6 +1610,7 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
               userProfileData['slotDurationInMinutes'] ?? '';
 
           selectedColor = userProfileData['primaryColor'] ?? '';
+          requirePermission = userProfileData['requirePermission'] ?? false;
 
           instagramLinkController.text = userProfileData['instagramLink'] ?? '';
 
@@ -1807,6 +1870,7 @@ class FirstTimeSignUpPageState extends State<FirstTimeSignUpPage> {
           'businessSchedule': _convertBusinessScheduleToJson(businessSchedule),
           'slotDurationInMinutes': selectedslotDurationInMinutes,
           'primaryColor': selectedColor,
+          'requirePermission': requirePermission,
           'photoUrl': imageUrl,
           'businessFullAddress': businessFullAddressController.text.trim(),
           'businessAppointmentPolicies':

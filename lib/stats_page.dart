@@ -59,8 +59,13 @@ class StatsPageState extends State<StatsPage> {
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
-                        child: CircularProgressIndicator(
-                      color: Colors.amber,
+                        child: ColorChangingCircularProgressIndicator(
+                      colorList: [
+                        Colors.red,
+                        Colors.blue,
+                        Colors.green,
+                        Colors.yellow
+                      ],
                     ));
                   } else if (snapshot.hasError) {
                     return Text('Error: ${snapshot.error}');
@@ -268,7 +273,15 @@ class StatsPageState extends State<StatsPage> {
                 future: pageViewsData,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(
+                        child: ColorChangingCircularProgressIndicator(
+                      colorList: [
+                        Colors.red,
+                        Colors.blue,
+                        Colors.green,
+                        Colors.yellow
+                      ],
+                    ));
                   } else if (snapshot.hasError) {
                     return Center(child: Text('Error: ${snapshot.error}'));
                   } else if (!snapshot.hasData) {
@@ -355,7 +368,15 @@ class StatsPageState extends State<StatsPage> {
                 future: getPageViews2('daily', currentUserUid),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(
+                        child: ColorChangingCircularProgressIndicator(
+                      colorList: [
+                        Colors.red,
+                        Colors.blue,
+                        Colors.green,
+                        Colors.yellow
+                      ],
+                    ));
                   } else if (snapshot.hasError) {
                     return Center(child: Text('Error: ${snapshot.error}'));
                   } else if (!snapshot.hasData || snapshot.data == null) {
@@ -588,6 +609,7 @@ class StatsPageState extends State<StatsPage> {
             'name': entry.value['name'],
             'phone': entry.value['phone'],
             'cancelled': entry.value['cancelled'],
+            'approved': entry.value['approved'],
             'startTime': entry.value['startTime'],
             'endTime': entry.value['endTime'],
           });
@@ -752,7 +774,7 @@ class StatsPageState extends State<StatsPage> {
               showTitles: true,
               reservedSize: 40,
 
-              interval: 1, // Adjust as needed
+              interval: 10, // Adjust as needed
               getTitlesWidget: (value, _) {
                 return Text(value.toString(),
                     style: const TextStyle(color: Colors.white));

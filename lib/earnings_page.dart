@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:appointments/helpers.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +21,7 @@ class EarningsPageState extends State<EarningsPage> {
   double shekelsEarnings = 0.0;
   double dollarsEarnings = 0.0;
   double eurosEarnings = 0.0;
+  Completer<void>? _calculateEarningsCompleter;
 
   @override
   void initState() {
@@ -29,6 +32,11 @@ class EarningsPageState extends State<EarningsPage> {
     // Initialize selectedMonth with the current month
     selectedMonth = DateTime.now().month;
     _calculateAndShowEarnings2();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override
@@ -192,66 +200,96 @@ class EarningsPageState extends State<EarningsPage> {
   }
 
   Future<double> calculateEarningsForMonth(
-      String userId, int year, int month, String selectedCurrency) async {
-    final DatabaseReference appointmentsRef = FirebaseDatabase.instance
-        .ref()
-        .child('users')
-        .child(userId)
-        .child('appointmentsByDate');
+    String userId,
+    int year,
+    int month,
+    String selectedCurrency,
+  ) async {
+    try {
+      if (_calculateEarningsCompleter != null &&
+          !_calculateEarningsCompleter!.isCompleted) {
+        _calculateEarningsCompleter!.completeError('Cancelled');
+      }
 
-    DatabaseEvent snapshot = await appointmentsRef.once();
-    Map<dynamic, dynamic> earnings =
-        {}; // Change the type to Map<String, dynamic>
+      _calculateEarningsCompleter = Completer<void>();
 
-    if (snapshot.snapshot.value != null) {
-      earnings = Map<dynamic, dynamic>.from(
-        snapshot.snapshot.value as Map<dynamic, dynamic>? ?? {},
-      );
+      final DatabaseReference appointmentsRef = FirebaseDatabase.instance
+          .ref()
+          .child('users')
+          .child(userId)
+          .child('appointmentsByDate');
 
-      double totalEarnings = 0.0;
+      DatabaseEvent snapshot = await appointmentsRef.once();
+      Map<dynamic, dynamic> earnings = {};
 
-      // Loop through appointments and calculate earnings for the specified month
-      earnings.forEach((key, appointmentData) {
-        Appointment appointment = Appointment.fromJson(appointmentData);
+      if (snapshot.snapshot.value != null) {
+        earnings = Map<dynamic, dynamic>.from(
+          snapshot.snapshot.value as Map<dynamic, dynamic>? ?? {},
+        );
 
-        // Check if the appointment is in the specified month
-        if (appointment.startTime.year == year &&
-            appointment.startTime.month == month &&
-            appointment.service.paymentType == selectedCurrency) {
-          totalEarnings += appointment.service.amount;
-        }
-      });
+        double totalEarnings = 0.0;
 
-      return totalEarnings;
+        // Loop through appointments and calculate earnings for the specified month
+        earnings.forEach((key, appointmentData) {
+          Appointment appointment = Appointment.fromJson(appointmentData);
+
+          // Check if the appointment is in the specified month
+          if (appointment.startTime.year == year &&
+              appointment.startTime.month == month &&
+              appointment.service.paymentType == selectedCurrency) {
+            totalEarnings += appointment.service.amount;
+          }
+        });
+
+        return totalEarnings;
+      }
+
+      return 0;
+    } catch (e) {
+      rethrow; // Rethrow the exception after completing the completer
+    } finally {
+      _completeCalculations(); // Complete calculations and trigger UI update
     }
-    return 0;
+  }
+
+  void _completeCalculations() {
+    if (!_calculateEarningsCompleter!.isCompleted) {
+      _calculateEarningsCompleter!.complete();
+
+      if (mounted) {
+        setState(() {
+          // Trigger a rebuild to update the UI with the calculated earnings
+        });
+      }
+    }
   }
 
   void _calculateAndShowEarnings2() async {
-    shekelsEarnings = await calculateEarningsForMonth(
-      widget.userId,
-      selectedYear,
-      selectedMonth,
-      'Shekels',
-    );
+    try {
+      shekelsEarnings = await calculateEarningsForMonth(
+        widget.userId,
+        selectedYear,
+        selectedMonth,
+        'Shekels',
+      );
 
-    dollarsEarnings = await calculateEarningsForMonth(
-      widget.userId,
-      selectedYear,
-      selectedMonth,
-      'Dollars',
-    );
+      dollarsEarnings = await calculateEarningsForMonth(
+        widget.userId,
+        selectedYear,
+        selectedMonth,
+        'Dollars',
+      );
 
-    eurosEarnings = await calculateEarningsForMonth(
-      widget.userId,
-      selectedYear,
-      selectedMonth,
-      'Euros',
-    );
-
-    if (context.mounted) {
-      setState(
-          () {}); // Trigger a rebuild to update the UI with the calculated earnings
+      eurosEarnings = await calculateEarningsForMonth(
+        widget.userId,
+        selectedYear,
+        selectedMonth,
+        'Euros',
+      );
+    } catch (e) {
+      // Handle cancellation or other errors here
+    } finally {
+      _completeCalculations(); // Complete calculations and trigger UI update
     }
   }
 

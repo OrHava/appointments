@@ -285,55 +285,41 @@ class SignInScreenState extends State<SignInScreen> {
     try {
       GoogleSignInAccount? googleUser;
 
-      // Check the platform and use the appropriate GoogleSignIn package
       if (kIsWeb) {
-        // Web implementation
         final FirebaseAuth auth = FirebaseAuth.instance;
-        // The `GoogleAuthProvider` can only be used while running on the web
         GoogleAuthProvider authProvider = GoogleAuthProvider();
         try {
           final UserCredential userCredential =
               await auth.signInWithPopup(authProvider);
 
-          return userCredential.user;
+          // Redirect based on user type
+          if (context.mounted) {
+            await handleSignInResult(context, userCredential);
+          }
         } catch (e) {
           debugPrint('error on web signin: $e');
           rethrow;
         }
       } else {
-        // Mobile implementation
         googleUser = await GoogleSignIn().signIn();
-      }
+        final GoogleSignInAuthentication googleAuth =
+            await googleUser!.authentication;
+        final AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser!.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      UserCredential userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
-
-      // Get user type
-      String? userType = await getUserType(userCredential.user!.uid);
-
-      // Check if the user is signing in for the first time
-      if (userCredential.additionalUserInfo!.isNewUser && context.mounted) {
-        // Redirect the user to a different page for the first-time sign-in
-        Future.delayed(Duration.zero, () {
-          Navigator.of(context).pushReplacementNamed('/firstTimeSignUp');
-        });
-      } else {
-        // Redirect based on user type
+        UserCredential userCredential =
+            await FirebaseAuth.instance.signInWithCredential(credential);
         if (context.mounted) {
-          redirectToHomePage(context, userType);
+          await handleSignInResult(context, userCredential);
         }
       }
     } catch (e) {
       // Handle Google sign-in errors
-      // ignore: avoid_print
-      print(e.toString());
+      if (kDebugMode) {
+        print(e.toString());
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -345,67 +331,35 @@ class SignInScreenState extends State<SignInScreen> {
     return null;
   }
 
-  // Future<void> signInWithGoogle(BuildContext context) async {
-  //   await GoogleSignIn().signOut();
+  Future<void> handleSignInResult(
+      BuildContext context, UserCredential userCredential) async {
+    // Get user type
+    String? userType = await getUserType(userCredential.user!.uid);
 
-  //   try {
-  //     final GoogleSignInAccount? googleUser = await GoogleSignIn(
-  //       clientId:
-  //           "401963892153-rfkmrm58uv6mi48qme7r99d4bqgmanl7.apps.googleusercontent.com",
-  //     ).signIn();
-  //     final GoogleSignInAuthentication googleAuth =
-  //         await googleUser!.authentication;
-  //     final AuthCredential credential = GoogleAuthProvider.credential(
-  //       accessToken: googleAuth.accessToken,
-  //       idToken: googleAuth.idToken,
-  //     );
+    // Check if the user is signing in for the first time
+    if (userCredential.additionalUserInfo!.isNewUser && context.mounted) {
+      // Redirect the user to a different page for the first-time sign-in
+      await Navigator.pushReplacementNamed(context, '/firstTimeSignUp');
+    } else {
+      // Redirect based on user type
+      if (context.mounted) {
+        redirectToHomePage(context, userType);
+      }
+    }
+  }
 
-  //     UserCredential userCredential =
-  //         await FirebaseAuth.instance.signInWithCredential(credential);
-
-  //     // Get user type
-  //     String? userType = await getUserType(userCredential.user!.uid);
-
-  //     // Check if the user is signing in for the first time
-  //     if (userCredential.additionalUserInfo!.isNewUser && context.mounted) {
-  //       // Redirect the user to a different page for the first-time sign-in
-  //       Navigator.pushReplacement(
-  //         context,
-  //         MaterialPageRoute(builder: (context) => const FirstTimeSignUpPage()),
-  //       );
-  //     } else {
-  //       // Redirect based on user type
-  //       redirectToHomePage(context, userType);
-  //     }
-  //   } catch (e) {
-  //     // Handle Google sign-in errors
-  //     // ignore: avoid_print
-  //     print(e.toString());
-  //     if (context.mounted) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: Text(e.toString()),
-  //         ),
-  //       );
-  //     }
-  //   }
-  // }
-
-  void redirectToHomePage(BuildContext context, String? userType) {
+  Future<void> redirectToHomePage(
+      BuildContext context, String? userType) async {
     if (userType == 'user') {
-      Future.delayed(Duration.zero, () {
-        Navigator.of(context).pushReplacementNamed('/home');
-      });
+      await Navigator.of(context).pushReplacementNamed('/home');
     } else if (userType == 'business') {
-      Future.delayed(Duration.zero, () {
-        Navigator.of(context).pushReplacementNamed('/businessHome');
-      });
+      await Navigator.of(context).pushReplacementNamed('/businessHome');
     } else {
       // Handle the case where user type is not recognized
       // ignore: avoid_print
-      Future.delayed(Duration.zero, () {
-        Navigator.of(context).pushReplacementNamed('/firstTimeSignUp');
-      });
+
+      await Navigator.of(context).pushReplacementNamed('/firstTimeSignUp');
+
       //  print("Unknown user type");
     }
   }

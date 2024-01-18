@@ -125,7 +125,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
   }
 
   Future<void> bookAppointment(
-      String businessName, String businessPhone) async {
+      String businessName, String businessPhone, bool requirePermission) async {
     final FirebaseAuth auth = FirebaseAuth.instance;
     final User? user = auth.currentUser;
 
@@ -161,12 +161,17 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
           // Assuming you have selected values for appointment
           DateTime startTime = combinedDateTime;
           DateTime endTime = combinedDateTime.add(const Duration(minutes: 30));
+          bool approved = true;
+          if (requirePermission == true) {
+            approved = false;
+          }
 
           Appointment newAppointmentForUser = Appointment(
             userId: widget.businessId,
             startTime: startTime,
             endTime: endTime,
             cancelled: false,
+            approved: approved,
             name: businessName,
             phone: businessPhone,
             service: selectedService.value,
@@ -177,6 +182,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
             startTime: startTime,
             endTime: endTime,
             cancelled: false,
+            approved: approved,
             name: widget.userName as String,
             phone: widget.userPhone as String,
             service: selectedService.value,
@@ -846,8 +852,10 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
                         child: ElevatedButton(
                           onPressed: () {
                             // Call the function to handle the booking logic
-                            bookAppointment(userProfile.businessName,
-                                userProfile.phoneNumber);
+                            bookAppointment(
+                                userProfile.businessName,
+                                userProfile.phoneNumber,
+                                userProfile.requirePermission);
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(
@@ -1891,6 +1899,7 @@ class BusinessProfilePageState extends State<BusinessProfilePage> {
             'userId': userUid,
             'name': entry.value['name'],
             'phone': entry.value['phone'],
+            'approved': entry.value['approved'],
             'cancelled': entry.value['cancelled'],
             'startTime': entry.value['startTime'],
             'endTime': entry.value['endTime'],

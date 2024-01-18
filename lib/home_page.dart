@@ -1,6 +1,9 @@
 import 'package:appointments/appointments_list.dart';
 import 'package:appointments/main.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -37,9 +40,63 @@ class HomePageState extends State<HomePage> {
       TextEditingController(); //new1
   @override
   void initState() {
+    requestPermission();
     super.initState();
+    getToken();
+    if (!kIsWeb) {
+      getToken();
+      NotificationHandler.handleNotification(context);
+    }
     // Set the initial page based on the provided pageNumber
     _currentIndex = widget.pageNumber;
+  }
+
+  void getToken() async {
+    await FirebaseMessaging.instance.getToken().then((token) => {
+          saveToken(token!),
+        });
+  }
+
+  void saveToken(String token) async {
+    User? user = FirebaseAuth.instance.currentUser;
+
+    // Check if the user is signed in
+    if (user != null) {
+      // Get the user ID
+      String userId = user.uid;
+      await FirebaseFirestore.instance
+          .collection("UserTokens")
+          .doc(userId)
+          .set({
+        'token': token,
+      });
+    }
+  }
+
+  void requestPermission() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+    NotificationSettings settings = await messaging.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
+
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      // ignore: avoid_print
+      print('User granted permission');
+    } else if (settings.authorizationStatus ==
+        AuthorizationStatus.provisional) {
+      // ignore: avoid_print
+      print('User granted provisional permission');
+    } else {
+      // ignore: avoid_print
+      print('User not granted permission');
+    }
   }
 
   @override
@@ -729,6 +786,7 @@ class HomePageState extends State<HomePage> {
             'name': entry.value['name'],
             'phone': entry.value['phone'],
             'cancelled': entry.value['cancelled'],
+            'approved': entry.value['approved'],
             'startTime': entry.value['startTime'],
             'endTime': entry.value['endTime'],
             'pushId': entry.value['pushId'],
@@ -779,6 +837,7 @@ class HomePageState extends State<HomePage> {
                   'name': entry.value['name'],
                   'phone': entry.value['phone'],
                   'cancelled': entry.value['cancelled'],
+                  'approved': entry.value['approved'],
                   'startTime': entry.value['startTime'],
                   'endTime': entry.value['endTime'],
                   'pushId': entry.value['pushId'],

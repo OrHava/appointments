@@ -1,11 +1,10 @@
-import 'dart:html';
-
 import 'package:appointments/about_page.dart';
 import 'package:appointments/account_settings_page.dart';
 import 'package:appointments/block_page.dart';
 import 'package:appointments/business_profile_page.dart';
 import 'package:appointments/earnings_page.dart';
 import 'package:appointments/help_center_page.dart';
+import 'package:appointments/helpers.dart';
 import 'package:appointments/home_page_business.dart';
 import 'package:appointments/notification_page.dart';
 import 'package:appointments/premium_account_management.dart';
@@ -15,6 +14,7 @@ import 'package:appointments/sign_up_screen.dart';
 import 'package:appointments/splash_screen.dart';
 import 'package:appointments/stats_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -28,10 +28,12 @@ import 'package:uni_links/uni_links.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:url_strategy/url_strategy.dart';
 import 'local_notifications.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-
+//import 'package:http/http.dart' as http;
+import 'package:universal_html/html.dart' as html;
+//import 'dart:html';
 //flutter build web
 //firebase deploy
+//flutter build appbundle --release
 
 // Initialize FlutterLocalNotificationsPlugin at the top of your file or widget
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -71,6 +73,12 @@ Future<void> initializeBackgroundTasks() async {
   Workmanager().initialize(callbackDispatcher);
 }
 
+Future<void> fireBaseBackgroundTasks(RemoteMessage remoteMessage) async {
+  if (kDebugMode) {
+    print("Handling background ${remoteMessage.messageId}");
+  }
+}
+
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 String deepLinkUsed = "";
 
@@ -80,6 +88,8 @@ Future<void> main() async {
   if (!kIsWeb) {
     await initializeBackgroundTasks();
     await Firebase.initializeApp();
+    await FirebaseMessaging.instance.getInitialMessage();
+    FirebaseMessaging.onBackgroundMessage(fireBaseBackgroundTasks);
     // Initialize deep linking
     await initUniLinks();
   }
@@ -103,12 +113,12 @@ Future<void> main() async {
     setPathUrlStrategy(); // Ensure that this is called before runApp
     // String? initialLink = await getInitialLink();
     // handleLink(initialLink!);
-    Uri? initialUri = Uri.parse(window.location.href);
+    Uri? initialUri = Uri.parse(html.window.location.href);
     handleLink(initialUri.toString());
 
     // Listen to changes in the URL
-    window.onPopState.listen((PopStateEvent event) {
-      Uri uri = Uri.parse(window.location.href);
+    html.window.onPopState.listen((html.PopStateEvent event) {
+      Uri uri = Uri.parse(html.window.location.href);
       handleLink(uri.toString());
     });
   }
@@ -136,13 +146,6 @@ Future<void> initUniLinks() async {
 }
 
 void handleLink(String link) {
-  // Example: Open a specific page based on the deep link
-  if (link.contains('/settings')) {
-    // Navigate to the home page using the stored context
-    navigatorKey.currentState?.pushNamed('/settings');
-    deepLinkUsed = 'settings';
-  }
-
   if (link.contains('/businessProfile/')) {
     // Extract business ID from the deep link
     String businessId = link.split('/businessProfile/')[1];
@@ -158,6 +161,7 @@ void handleLink(String link) {
 class MyNavigatorObserver extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    // ignore: avoid_print
     print('Did push: ${route.settings.name}');
   }
 
@@ -174,6 +178,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+        scrollBehavior: MyCustomScrollBehavior(),
         navigatorObservers: [MyNavigatorObserver()],
         navigatorKey: navigatorKey,
         title: 'Appointments',
@@ -299,7 +304,7 @@ class AuthenticationWrapper extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const CircularProgressIndicator(); // You can show a loading indicator here
+          return const SplashScreen();
         }
 
         if (snapshot.hasData) {

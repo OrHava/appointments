@@ -115,7 +115,47 @@ class AppointmentsListState extends State<AppointmentsList> {
                                     fontSize: 14, color: Color(0xFF878493)),
                               ),
                           ],
-                        )
+                        ),
+                        Expanded(child: Container()),
+                        IconButton(
+                            onPressed: () {
+                              if (widget.userType == 2) {
+                                if (!appointment.approved) {
+                                  approvedAppointment(appointment.pushId,
+                                      context, appointment.userId);
+                                } else {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Appointment is already approved.')),
+                                    );
+                                  }
+                                }
+                              }
+                              if (widget.userType == 1) {
+                                if (context.mounted) {
+                                  if (!appointment.approved) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Appointment isnt approved yet by business.')),
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                            content: Text(
+                                                'Appointment is approved by business.')));
+                                  }
+                                }
+                              }
+                            },
+                            icon: Icon(
+                              (!appointment.approved)
+                                  ? Icons.circle
+                                  : Icons.check_circle,
+                              color: Colors.white,
+                            )),
                       ],
                     ),
                   ],
@@ -369,6 +409,89 @@ class AppointmentsListState extends State<AppointmentsList> {
             const SnackBar(
                 content:
                     Text('Failed to cancel appointment. Please try again.')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> approvedAppointment(
+      String? appointmentId, BuildContext context, String userId) async {
+    final FirebaseAuth auth = FirebaseAuth.instance;
+    final User? user = auth.currentUser;
+
+    if (user != null) {
+      try {
+        // Reference to the appointment node in the Realtime Database
+
+        final DatabaseReference appointmentRef2 = FirebaseDatabase.instance
+            .ref()
+            .child('users')
+            .child(userId)
+            .child('appointmentsByDate')
+            .child(appointmentId!);
+
+        final DatabaseReference appointmentRef = FirebaseDatabase.instance
+            .ref()
+            .child('users')
+            .child(user.uid)
+            .child('appointmentsByDate')
+            .child(appointmentId);
+
+        // Fetch the existing appointment data
+        DatabaseEvent appointmentSnapshot = await appointmentRef.once();
+        DatabaseEvent appointmentSnapshot2 = await appointmentRef2.once();
+        if (appointmentSnapshot.snapshot.value != null &&
+            appointmentSnapshot2.snapshot.value != null) {
+          // Update the 'cancelled' field to true
+          Map<String, dynamic> appointmentData;
+
+          // Check if the data is of type Map<String, dynamic>
+          if (appointmentSnapshot.snapshot.value is Map<String, dynamic> &&
+              appointmentSnapshot2.snapshot.value is Map<String, dynamic>) {
+            appointmentData = Map<String, dynamic>.from(
+                appointmentSnapshot.snapshot.value as Map<String, dynamic>);
+            appointmentData = Map<String, dynamic>.from(
+                appointmentSnapshot2.snapshot.value as Map<String, dynamic>);
+          } else {
+            // Handle the case when the data is of type Object?
+            appointmentData = {
+              'approved': true
+            }; // Assuming 'cancelled' is the only field you want to update
+          }
+
+          // Save the updated appointment back to the database
+          await appointmentRef.update(appointmentData);
+          await appointmentRef2.update(appointmentData);
+          // Optionally, you can show a success message or trigger any other necessary actions
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                  content: Text('Appointment approved successfully!')),
+            );
+
+            // Refresh the list by calling setState
+            widget.onCancel!();
+          }
+        } else {
+          // Handle the case when the appointment with the given ID doesn't exist
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Appointment not found.')),
+            );
+          }
+        }
+      } catch (error) {
+        // Handle errors
+        // ignore: avoid_print
+        print("Error: $error");
+
+        // Optionally, you can show an error message
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content:
+                    Text('Failed to approved appointment. Please try again.')),
           );
         }
       }

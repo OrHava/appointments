@@ -29,7 +29,7 @@ class LocalNotifications {
   }) async {
     AndroidNotificationDetails androidNotificationDetails =
         const AndroidNotificationDetails(
-      "GiseleHava11",
+      "GiseleHava4",
       'channelName',
       playSound: true,
       icon: 'ic_launcher',
