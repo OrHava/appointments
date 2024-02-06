@@ -1,4 +1,4 @@
-import 'package:appointments/helpers.dart';
+import 'package:appointments/helpers/helpers.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';

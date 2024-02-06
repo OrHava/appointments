@@ -1,5 +1,5 @@
-import 'package:appointments/first_time_sign_up_page.dart';
-import 'package:appointments/home_page_business.dart';
+import 'package:appointments/screens_general/first_time_sign_up_page.dart';
+import 'package:appointments/screens_business/home_page_business.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 //import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';

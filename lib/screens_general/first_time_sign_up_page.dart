@@ -2,9 +2,9 @@
 
 import 'dart:collection';
 
-import 'package:appointments/home_page.dart';
-import 'package:appointments/premium_account_management.dart';
-import 'package:appointments/sign_in_screen.dart';
+import 'package:appointments/screens_user/home_page.dart';
+import 'package:appointments/screens_business/premium_account_management.dart';
+import 'package:appointments/screens_auth/sign_in_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -14,10 +14,10 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'dart:io';
-import 'helpers.dart';
-import 'home_page_business.dart';
+import '../helpers/helpers.dart';
+import '../screens_business/home_page_business.dart';
 import 'dart:async';
-import 'main.dart';
+import '../main.dart';
 
 class UserProfile {
   final String uid;

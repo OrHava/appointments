@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:appointments/home_page.dart';
+import 'package:appointments/screens_user/home_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -9,12 +9,12 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'appointment_confirmation_popup.dart';
+import '../helpers/appointment_confirmation_popup.dart';
 // import 'package:timezone/timezone.dart' as tz;
 
-import 'first_time_sign_up_page.dart';
-import 'helpers.dart';
-import 'main.dart';
+import '../screens_general/first_time_sign_up_page.dart';
+import '../helpers/helpers.dart';
+import '../main.dart';
 
 class BusinessProfilePage extends StatefulWidget {
   final String businessId;

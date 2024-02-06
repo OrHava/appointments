@@ -1,4 +1,4 @@
-import 'package:appointments/appointments_list.dart';
+import 'package:appointments/helpers/appointments_list.dart';
 import 'package:appointments/main.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,10 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
-import 'chat_page.dart';
-import 'first_time_sign_up_page.dart';
-import 'helpers.dart';
-import 'home_page_business.dart';
+import '../screens_general/chat_page.dart';
+import '../screens_general/first_time_sign_up_page.dart';
+import '../helpers/helpers.dart';
+import '../screens_business/home_page_business.dart';
 
 class HomePage extends StatefulWidget {
   final int pageNumber;
