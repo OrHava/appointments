@@ -1,4 +1,4 @@
-import 'package:appointments/screens_general/first_time_sign_up_page.dart';
+import 'package:appointments/views/first_time_sign_up_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';

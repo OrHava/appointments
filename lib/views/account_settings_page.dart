@@ -1,4 +1,4 @@
-import 'package:appointments/screens_auth/sign_in_screen.dart';
+import 'package:appointments/auth_views/sign_in_screen.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';

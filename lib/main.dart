@@ -1,18 +1,19 @@
-import 'package:appointments/screens_general/about_page.dart';
-import 'package:appointments/screens_general/account_settings_page.dart';
-import 'package:appointments/screens_general/block_page.dart';
-import 'package:appointments/screens_user/business_profile_page.dart';
-import 'package:appointments/screens_business/earnings_page.dart';
-import 'package:appointments/screens_business/help_center_page.dart';
+import 'package:appointments/auth_views/sign_in_screen.dart';
+import 'package:appointments/auth_views/sign_up_screen.dart';
+import 'package:appointments/business_views/earnings_page.dart';
+import 'package:appointments/business_views/help_center_page.dart';
+import 'package:appointments/business_views/home_page_business.dart';
+import 'package:appointments/business_views/premium_account_management.dart';
+import 'package:appointments/business_views/stats_page.dart';
 import 'package:appointments/helpers/helpers.dart';
-import 'package:appointments/screens_business/home_page_business.dart';
-import 'package:appointments/screens_general/notification_page.dart';
-import 'package:appointments/screens_business/premium_account_management.dart';
-import 'package:appointments/screens_general/settings_page.dart';
-import 'package:appointments/screens_auth/sign_in_screen.dart';
-import 'package:appointments/screens_auth/sign_up_screen.dart';
-import 'package:appointments/screens_general/splash_screen.dart';
-import 'package:appointments/screens_business/stats_page.dart';
+import 'package:appointments/helpers/local_notifications.dart';
+import 'package:appointments/user_views/business_profile_page.dart';
+import 'package:appointments/user_views/home_page.dart';
+import 'package:appointments/views/about_page.dart';
+import 'package:appointments/views/account_settings_page.dart';
+import 'package:appointments/views/block_page.dart';
+import 'package:appointments/views/notification_page.dart';
+import 'package:appointments/views/settings_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -21,16 +22,16 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
-import 'screens_general/first_time_sign_up_page.dart';
-import 'screens_user/home_page.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:uni_links/uni_links.dart';
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:url_strategy/url_strategy.dart';
-import 'helpers/local_notifications.dart';
-//import 'package:http/http.dart' as http;
 import 'package:universal_html/html.dart' as html;
-//import 'dart:html';
+
+import 'views/first_time_sign_up_page.dart';
+
+import 'helpers/splash_screen.dart';
+
 //flutter build web
 //firebase deploy
 //flutter build appbundle --release

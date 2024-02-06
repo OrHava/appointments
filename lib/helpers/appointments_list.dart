@@ -1,10 +1,11 @@
-import 'package:appointments/screens_business/user_profile_page.dart';
+import 'package:appointments/business_views/home_page_business.dart';
+import 'package:appointments/business_views/user_profile_page.dart';
+import 'package:appointments/user_views/business_profile_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
-import 'package:appointments/screens_user/business_profile_page.dart';
+
 import 'helpers.dart';
-import '../screens_business/home_page_business.dart';
 
 class AppointmentsList extends StatefulWidget {
   final List<Appointment> appointments;

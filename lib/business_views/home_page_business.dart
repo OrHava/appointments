@@ -1,6 +1,11 @@
 import 'dart:io';
 
-import 'package:appointments/screens_general/settings_page.dart';
+import 'package:appointments/views/first_time_sign_up_page.dart';
+import 'package:appointments/helpers/appointments_list.dart';
+import 'package:appointments/helpers/helpers.dart';
+
+import 'package:appointments/views/chat_page.dart';
+import 'package:appointments/views/settings_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -14,10 +19,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:table_calendar/table_calendar.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../helpers/appointments_list.dart';
-import '../screens_general/chat_page.dart';
-import '../screens_general/first_time_sign_up_page.dart';
-import '../helpers/helpers.dart';
 import 'package:universal_html/html.dart' as html;
 
 class HomePageBusiness extends StatefulWidget {
