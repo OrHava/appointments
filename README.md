@@ -1,7 +1,8 @@
 # Appointments Manager Read Me
 
 Welcome to the Appointments Manager – your ultimate solution for seamless appointment scheduling!
-
+### Link
+https://play.google.com/store/apps/details?id=com.orhava.appointments
 ## What is the Appointments Manager?
 
 The Appointments Manager is your all-in-one platform designed to revolutionize the way businesses manage appointments and connect with clients. It offers a comprehensive suite of features that empower businesses to showcase services, engage in real-time chat with clients, and customize their profiles to reflect their unique brand identity. 
