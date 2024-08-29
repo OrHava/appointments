@@ -48,3 +48,5 @@ Thank you for choosing the Appointments Manager – where seamless scheduling me
 ---
 
 Feel free to reach out to us for any questions, feedback, or support inquiries. We're here to help you make the most of your experience with the Appointments Manager!
+- **Gif:**
+<img src="https://github.com/user-attachments/assets/d3682347-bb2c-40dd-802d-a4f8b4bae2be" alt="Appointments App" width="300"/>
